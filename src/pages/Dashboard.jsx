@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db, storage } from '../services/firebase';
 import { generateExperience, generateResearchAnalysis } from '../services/gemini';
 import PDFUploader from '../components/dashboard/PDFUploader';
@@ -16,6 +16,8 @@ const Dashboard = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
   const [generating, setGenerating] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const isFirstLoad = useRef(true);
 
   const [formData, setFormData] = useState({
     personal: {
@@ -50,15 +52,54 @@ const Dashboard = () => {
     customDomain: ''
   });
 
-  // --- Autosave Logic ---
+  // --- Fetch Existing Data ---
   useEffect(() => {
-    if (!currentUser) return;
+    if (currentUser) {
+      const fetchData = async () => {
+        try {
+          const docRef = doc(db, "portfolios", currentUser.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            // Merge existing data with default structure
+            setFormData(prev => ({ ...prev, ...docSnap.data() }));
+          }
+        } catch (error) {
+          console.error("Error fetching data:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchData();
+    }
+  }, [currentUser]);
+
+  // --- Autosave Logic (Diagnostic Mode) ---
+  useEffect(() => {
+    console.log("🔄 Autosave Effect Triggered");
+
+    if (!currentUser) {
+      console.log("❌ Autosave skipped: No current user");
+      return;
+    }
+    if (isLoading) {
+      console.log("❌ Autosave skipped: Still loading initial data");
+      return;
+    }
+
+    if (isFirstLoad.current) {
+      console.log("⚠️ Autosave skipped: First load");
+      isFirstLoad.current = false;
+      return;
+    }
 
     const savePortfolioData = async () => {
+      console.log("💾 Starting Autosave...");
       setIsSaving(true);
       try {
         // Sanitize to remove undefined values which Firestore rejects
+        console.log("🧹 Sanitizing data...");
         const sanitizedData = JSON.parse(JSON.stringify(formData));
+        console.log("✅ Data sanitized. Writing to Firestore...");
 
         await setDoc(doc(db, "portfolios", currentUser.uid), {
           ...sanitizedData,
@@ -66,9 +107,11 @@ const Dashboard = () => {
           lastSaved: serverTimestamp()
         }, { merge: true });
         
+        console.log("✨ Autosave SUCCESS!");
         setLastSaved(new Date());
       } catch (error) {
-        console.error("Autosave failed:", error);
+        console.error("🔥 Autosave FAILED:", error);
+        if (error.code) console.error("Error Code:", error.code);
       } finally {
         setIsSaving(false);
       }
@@ -80,7 +123,7 @@ const Dashboard = () => {
     }, 2000);
 
     return () => clearTimeout(timeoutId);
-  }, [formData, currentUser]);
+  }, [formData, currentUser, isLoading]);
 
 
   // --- COMPLETELY BYPASS FIREBASE STORAGE ---
@@ -190,9 +233,13 @@ const Dashboard = () => {
 
 
   // --- File Upload Handlers ---
-  const handleProfileUpload = (e) => {
+  const handleProfileUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) handleFieldChange('personal', 'profilePicture', file);
+    if (!file) return;
+    
+    // Convert to Base64 immediately so it saves to Firestore Drafts
+    const url = await uploadFileToStorage(file, `users/${currentUser.uid}/profile_${Date.now()}`);
+    if (url) handleFieldChange('personal', 'profilePicture', url);
   };
 
   const handlePublicCvUpload = async (e) => {
@@ -219,89 +266,59 @@ const Dashboard = () => {
     }
   };
 
+  const handleAchievementImageUpload = async (index, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const url = await uploadFileToStorage(file, `users/${currentUser.uid}/achievements/${Date.now()}`);
+    if (url) handleArrayChange('achievements', index, 'image', url);
+  };
+
+  const handleGalleryImageUpload = async (index, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const url = await uploadFileToStorage(file, `users/${currentUser.uid}/gallery/${Date.now()}`);
+    if (url) handleArrayChange('gallery', index, 'image', url);
+  };
+
 
   // --- Action Handlers ---
   const handlePreview = () => {
     if (!currentUser) return;
-    if (!lastSaved && !formData.isPublished) {
-      alert("Please wait for the portfolio to save...");
-      return;
-    }
+    // Remove the annoying isSaving block! Just open the preview.
+    console.log("Opening preview for:", currentUser.uid);
     window.open(`${window.location.origin}/u/${currentUser.uid}`, '_blank');
   };
 
   const handlePublish = async () => {
-    if (!currentUser) {
-      alert("You must be logged in to publish.");
+    if (!currentUser) return alert("You must be logged in!");
+    
+    // 1. Check if Firebase DB is actually connected!
+    if (!db) {
+      alert("❌ FIREBASE CRASH: Your database connection is broken. Check src/services/firebase.js");
       return;
     }
 
     setIsPublishing(true);
     
     try {
-      // 1. Create a shallow copy of formData to hold our new URLs
-      let dataToSave = { ...formData };
+      console.log("Attempting to publish for user:", currentUser.uid);
+      const sanitizedData = JSON.parse(JSON.stringify(formData));
 
-      // 2. Upload Profile Picture
-      if (dataToSave.personal?.profilePicture instanceof File) {
-        dataToSave.personal.profilePicture = await uploadFileToStorage(
-          dataToSave.personal.profilePicture, 
-          `users/${currentUser.uid}/profile_${Date.now()}`
-        );
-      }
-
-      // 3. Upload Public Resume PDF (Fallback just in case immediate upload failed)
-      if (dataToSave.publicResumeUrl instanceof File) {
-        dataToSave.publicResumeUrl = await uploadFileToStorage(
-          dataToSave.publicResumeUrl,
-          `users/${currentUser.uid}/resume_${Date.now()}.pdf`
-        );
-      }
-
-      // 4. Upload Achievements Images
-      dataToSave.achievements = await Promise.all((Array.isArray(dataToSave.achievements) ? dataToSave.achievements : []).map(async (item) => {
-        if (item?.image instanceof File) {
-          const url = await uploadFileToStorage(item.image, `users/${currentUser.uid}/achievements/${Date.now()}_${item.image.name}`);
-          return { ...item, image: url };
-        }
-        return item;
-      }));
-
-      // 5. Upload Gallery Images
-      dataToSave.gallery = await Promise.all((Array.isArray(dataToSave.gallery) ? dataToSave.gallery : []).map(async (item) => {
-        if (item?.image instanceof File) {
-          const url = await uploadFileToStorage(item.image, `users/${currentUser.uid}/gallery/${Date.now()}_${item.image.name}`);
-          return { ...item, image: url };
-        }
-        return item;
-      }));
-
-      // Generate a URL-friendly slug
-      const nameForSlug = dataToSave.personal?.name || 'user';
-      const baseSlug = nameForSlug.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-      const uniqueSuffix = Math.random().toString(36).substring(2, 7);
-      const slug = `${baseSlug}-${uniqueSuffix}`;
-
-      // 6. SANITIZE! Strip all undefined values
-      const sanitizedData = JSON.parse(JSON.stringify(dataToSave));
-
-      await setDoc(doc(db, "portfolios", slug), {
+      // 2. Standard Firebase Save (No tricky timeouts)
+      await setDoc(doc(db, "portfolios", currentUser.uid), {
         ...sanitizedData,
         userId: currentUser.uid,
         publishedAt: serverTimestamp(),
         isPublished: true,
-        isDraft: false
       });
 
-      const newUrl = `${window.location.origin}/p/${slug}`;
-      setFormData(prev => ({ 
-        ...prev, 
-        publicUrl: newUrl,
-      }));
-      alert(`Success! Your portfolio is live at ${newUrl}`);
+      console.log("Publish successful!");
+      alert(`🚀 Success! Your portfolio is published.`);
     } catch (error) {
-      console.error("Error publishing:", error);
-      alert("Failed to publish portfolio.");
+      console.error("🔥 PUBLISH ERROR:", error);
+      alert(`Failed to publish: ${error.message}`);
     } finally {
       setIsPublishing(false);
     }
@@ -624,7 +641,7 @@ const Dashboard = () => {
                   <label className="flex items-center justify-center gap-2 w-full bg-white/5 border border-white/10 text-slate-300 rounded-md p-1.5 cursor-pointer hover:bg-white/10 transition-colors text-xs">
                     <Upload size={12} />
                     {ach?.image ? (ach.image instanceof File ? ach.image.name : "Image Uploaded") : "Upload Image"}
-                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleArrayChange('achievements', idx, 'image', e.target.files[0])} />
+                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleAchievementImageUpload(idx, e)} />
                   </label>
                 </div>
               ))}
@@ -647,7 +664,7 @@ const Dashboard = () => {
                     )}
                     <label className="absolute inset-0 cursor-pointer flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
                       <Upload size={16} className="text-white" />
-                      <input type="file" className="hidden" accept="image/*" onChange={(e) => handleArrayChange('gallery', idx, 'image', e.target.files[0])} />
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => handleGalleryImageUpload(idx, e)} />
                     </label>
                   </div>
                   <input 
@@ -689,23 +706,15 @@ const Dashboard = () => {
           <div className={glassCard}>
             <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-widest border-b border-white/10 pb-2">Theme</h3>
             <div className="grid grid-cols-2 gap-2">
-              {[
-                { id: 'galaxy', img: '/textures/galaxy-banner.png' },
-                { id: 'lava', img: '/textures/lava-banner.png' },
-                { id: 'forest', img: '/textures/forest-banner.png' },
-                { id: 'neon', img: '/textures/neon-banner.png' }
-              ].map(theme => (
+              {/* FIXED THEME SELECTOR */}
+              {['galaxy', 'lava', 'forest', 'neon'].map(themeOption => (
                 <div 
-                  key={theme.id}
-                  onClick={() => setFormData(prev => ({ ...prev, theme: theme.id }))}
-                  className={`
-                    aspect-video rounded-lg overflow-hidden cursor-pointer relative group border-2 transition-all
-                    ${formData.theme === theme.id ? 'border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'border-transparent opacity-60 hover:opacity-100'}
-                  `}
+                  key={themeOption} 
+                  onClick={() => setFormData(prev => ({ ...prev, theme: themeOption }))} 
+                  className={`aspect-video rounded-lg overflow-hidden cursor-pointer relative border-2 transition-all ${formData.theme === themeOption ? 'border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'border-transparent opacity-60 hover:opacity-100'}`}
                 >
-                  <img src={theme.img} alt={theme.id} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-xs font-bold uppercase">{theme.id}</span>
+                  <div className="absolute inset-0 bg-slate-800 flex items-center justify-center">
+                    <span className="text-xs font-bold uppercase text-slate-400">{themeOption}</span>
                   </div>
                 </div>
               ))}

@@ -46,22 +46,20 @@ const PDFUploader = ({ setFormData }) => {
       if (extractedData) {
         setFormData(prev => ({
           ...prev,
-          personal: {
-            ...prev.personal,
-            name: extractedData.name || prev?.personal?.name || '',
-            designation: extractedData.designation || prev?.personal?.designation || '',
+          // Forcefully overwrite the name and designation with AI data!
+          personal: { 
+            ...prev.personal, 
+            name: extractedData.personal?.name || prev.personal.name,
+            designation: extractedData.personal?.designation || prev.personal.designation
           },
-          about: extractedData.aboutMe || prev.about,
-          skills: extractedData.skills || [],
-          experience: extractedData.experience || [],
-          projects: extractedData.projects || [],
-          research: extractedData.research || [],
-          contact: {
-            ...prev.contact,
-            ...extractedData.contact
-          }
+          // Catch 'about', 'summary', or 'objective' from the resume!
+          about: extractedData.about || extractedData.objective || extractedData.summary || prev.about,
+          
+          skills: extractedData.skills || prev.skills,
+          experience: extractedData.experience || prev.experience,
+          research: extractedData.research || prev.research,
         }));
-        alert("Resume successfully extracted!");
+        alert("✅ Resume successfully extracted and applied!");
       }
     } catch (error) {
       console.error("PDF Extraction Failed:", error);
