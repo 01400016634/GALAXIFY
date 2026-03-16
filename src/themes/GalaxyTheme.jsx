@@ -1,181 +1,176 @@
-import React, { useRef, useMemo, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import React from 'react';
+import { Mail, Github, Linkedin, ExternalLink, Download } from 'lucide-react';
+import { Canvas } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
-import { motion } from 'framer-motion';
-
-const Crystal = ({ position }) => {
-  const meshRef = useRef();
-  const [randomData] = useState(() => ({
-    rotationSpeed: {
-      x: (Math.random() - 0.5) * 0.02,
-      y: (Math.random() - 0.5) * 0.02
-    },
-    bobOffset: Math.random() * 100,
-    bobSpeed: 0.5 + Math.random() * 0.5
-  }));
-
-  useFrame((state) => {
-    const t = state.clock.getElapsedTime();
-    if (meshRef.current) {
-      meshRef.current.rotation.x += randomData.rotationSpeed.x;
-      meshRef.current.rotation.y += randomData.rotationSpeed.y;
-      // Bobbing effect on Y axis
-      meshRef.current.position.y = position[1] + Math.sin(t * randomData.bobSpeed + randomData.bobOffset) * 0.5;
-    }
-  });
-
-  return (
-    <mesh ref={meshRef} position={position}>
-      <icosahedronGeometry args={[1, 0]} />
-      <meshPhysicalMaterial 
-        color="#8b5cf6" 
-        emissive="#3b0764"
-        emissiveIntensity={0.5}
-        roughness={0}
-        metalness={1}
-        wireframe 
-      />
-    </mesh>
-  );
-};
-
-const FloatingCrystals = () => {
-  const count = 15;
-  const crystals = useMemo(() => {
-    return Array.from({ length: count }).map(() => ({
-      position: [
-        (Math.random() - 0.5) * 30, // x spread
-        (Math.random() - 0.5) * 20, // y spread
-        (Math.random() - 0.5) * 10  // z spread
-      ]
-    }));
-  }, []);
-
-  return (
-    <group>
-      {crystals.map((data, i) => (
-        <Crystal key={i} position={data.position} />
-      ))}
-    </group>
-  );
-};
 
 const GalaxyTheme = ({ portfolioData }) => {
-  const { name, designation, about, skills, experience, projects } = portfolioData;
-
-  // Framer motion variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1,
-      transition: { staggerChildren: 0.2 }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.6, ease: "easeOut" }
-    }
-  };
-
-  const cardClass = "bg-black/40 backdrop-blur-md border border-purple-500/30 text-slate-200 rounded-2xl p-8 shadow-xl";
+  // 1. Safely unpack all the data from the dashboard
+  const {
+    personal = {},
+    contact = {},
+    about = "",
+    skills = [],
+    experience = [],
+    projects = [],
+    research = [],
+    achievements = [],
+    gallery = [],
+    publicResumeUrl = ""
+  } = portfolioData || {};
 
   return (
-    <div className="relative min-h-screen w-full bg-black text-slate-200 font-sans overflow-x-hidden">
-      
-      {/* 3D Background */}
+    <div className="min-h-screen bg-[#050510] text-slate-200 font-sans relative overflow-hidden pb-20">
+      {/* 1. PUT YOUR 3D ELEMENT HERE! */}
       <div className="fixed inset-0 z-0">
-        <Canvas camera={{ position: [0, 0, 20], fov: 50 }}>
-          <ambientLight intensity={0.2} />
-          <pointLight position={[10, 10, 10]} intensity={1} color="#a855f7" />
-          <Stars radius={150} depth={50} count={7000} factor={6} saturation={1} fade />
-          <FloatingCrystals />
+        <Canvas camera={{ position: [0, 0, 1] }}>
+          <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
         </Canvas>
       </div>
 
-      {/* Foreground UI */}
-      <div className="relative z-10 container mx-auto px-6 py-20">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="max-w-4xl mx-auto space-y-16"
-        >
-          {/* Hero */}
-          <motion.div variants={itemVariants} className="text-center space-y-4">
-            <h1 className="text-6xl md:text-8xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-500 to-red-500">
-              {name || "Your Name"}
+      <div className="max-w-4xl mx-auto px-6 pt-24 relative z-10">
+        
+        {/* HEADER: Profile Pic, Name, Designation */}
+        <header className="text-center mb-16 space-y-6">
+          {personal.profilePicture && (
+            <div className="w-32 h-32 mx-auto rounded-full p-1 bg-gradient-to-tr from-purple-500 to-cyan-500">
+              <img 
+                src={personal.profilePicture} 
+                alt="Profile" 
+                className="w-full h-full object-cover rounded-full border-4 border-[#050510]"
+              />
+            </div>
+          )}
+          <div>
+            <h1 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 tracking-tight mb-2">
+              {personal.name || "Your Name"}
             </h1>
-            <h2 className="text-2xl md:text-3xl text-purple-200 font-light tracking-widest uppercase">
-              {designation || "Creative Developer"}
-            </h2>
-          </motion.div>
-
-          {/* About */}
-          <motion.section variants={itemVariants} className={cardClass}>
-            <h3 className="text-2xl font-bold text-purple-400 mb-4">About Me</h3>
-            <p className="text-lg leading-relaxed text-slate-300">
-              {about || "Passionate about building digital experiences that matter."}
+            <p className="text-xl text-cyan-400 tracking-widest uppercase font-semibold">
+              {personal.designation || "Creative Professional"}
             </p>
-          </motion.section>
+          </div>
 
-          {/* Skills */}
-          <motion.section variants={itemVariants} className={cardClass}>
-            <h3 className="text-2xl font-bold text-purple-400 mb-6">Skills</h3>
+          {/* CONTACT LINKS */}
+          <div className="flex justify-center gap-4 pt-4">
+            {contact.email && <a href={`mailto:${contact.email}`} className="text-slate-400 hover:text-white transition-colors"><Mail size={24} /></a>}
+            {contact.github && <a href={contact.github} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-white transition-colors"><Github size={24} /></a>}
+            {contact.linkedin && <a href={contact.linkedin} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-white transition-colors"><Linkedin size={24} /></a>}
+          </div>
+
+          {publicResumeUrl && (
+            <div className="pt-4">
+              <a href={publicResumeUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white px-6 py-3 rounded-full font-bold transition-all">
+                <Download size={18} /> Download CV
+              </a>
+            </div>
+          )}
+        </header>
+
+        {/* ABOUT ME */}
+        {about && (
+          <section className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+            <h2 className="text-2xl font-bold text-purple-400 mb-4">About Me</h2>
+            <p className="text-slate-300 leading-relaxed">{about}</p>
+          </section>
+        )}
+
+        {/* SKILLS */}
+        {skills.length > 0 && (
+          <section className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+            <h2 className="text-2xl font-bold text-purple-400 mb-6">Skills</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {(skills && skills.length > 0 ? skills : [{name: 'Skill 1', level: 80}]).map((skill, idx) => (
+              {skills.map((skill, idx) => (
                 <div key={idx}>
-                  <div className="flex justify-between mb-2 text-sm">
+                  <div className="flex justify-between text-sm mb-2 text-slate-300 font-medium">
                     <span>{skill.name}</span>
-                    <span className="text-purple-400">{skill.level}%</span>
+                    <span>{skill.level}%</span>
                   </div>
-                  <div className="h-2 w-full bg-purple-900/30 rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      whileInView={{ width: `${skill.level}%` }}
-                      transition={{ duration: 1, delay: 0.5 }}
-                      className="h-full bg-purple-500"
+                  <div className="w-full bg-black/50 rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-purple-500 to-cyan-500 h-2 rounded-full" 
+                      style={{ width: `${skill.level}%` }}
                     />
                   </div>
                 </div>
               ))}
             </div>
-          </motion.section>
+          </section>
+        )}
 
-          {/* Experience */}
-          <motion.section variants={itemVariants} className={cardClass}>
-            <h3 className="text-2xl font-bold text-purple-400 mb-6">Experience</h3>
+        {/* EXPERIENCE */}
+        {experience.length > 0 && experience[0].jobTitle && (
+          <section className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+            <h2 className="text-2xl font-bold text-purple-400 mb-6">Experience</h2>
             <div className="space-y-8">
-              {(experience && experience.length > 0 ? experience : [{company: 'Company', role: 'Role', description: 'Description'}]).map((exp, idx) => (
-                <div key={idx} className="border-l-2 border-purple-500/30 pl-6">
-                  <h4 className="text-xl font-bold text-white">{exp.role}</h4>
-                  <div className="text-purple-300 text-sm mb-2">@ {exp.company}</div>
-                  <p className="text-slate-400">{exp.description}</p>
+              {experience.map((exp, idx) => (
+                <div key={idx} className="border-l-2 border-cyan-500/30 pl-6 relative">
+                  <div className="absolute w-3 h-3 bg-cyan-500 rounded-full -left-[7px] top-1.5" />
+                  <h3 className="text-xl font-bold text-white">{exp.jobTitle}</h3>
+                  <p className="text-cyan-400 font-medium mb-1">{exp.company} <span className="text-slate-500 text-sm ml-2">{exp.date}</span></p>
+                  {exp.description && <p className="text-slate-300 text-sm mb-3 mt-2">{exp.description}</p>}
+                  {exp.responsibilities && (
+                    <p className="text-slate-400 text-sm whitespace-pre-wrap">{exp.responsibilities}</p>
+                  )}
                 </div>
               ))}
             </div>
-          </motion.section>
+          </section>
+        )}
 
-          {/* Projects */}
-           <motion.section variants={itemVariants} className={cardClass}>
-            <h3 className="text-2xl font-bold text-purple-400 mb-6">Projects</h3>
-            <div className="grid grid-cols-1 gap-6">
-              {(projects && projects.length > 0 ? projects : [{title: 'Project 1', description: 'A cool project', link: '#'}]).map((proj, idx) => (
-                <div key={idx} className="bg-white/5 p-4 rounded-xl border border-white/5 hover:border-purple-500/50 transition-colors">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="text-lg font-bold text-white">{proj.title || "Project Title"}</h4>
-                    {proj.link && <a href={proj.link} target="_blank" rel="noreferrer" className="text-xs text-purple-400 hover:text-purple-300">View</a>}
+        {/* RESEARCH */}
+        {research.length > 0 && research[0].title && (
+          <section className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+            <h2 className="text-2xl font-bold text-pink-400 mb-6">Research & Papers</h2>
+            <div className="space-y-6">
+              {research.map((item, idx) => (
+                <div key={idx} className="bg-black/30 p-6 rounded-xl border border-white/5">
+                  <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
+                  {item.analysis_ai && <p className="text-slate-400 text-sm italic mb-4">"{item.analysis_ai}"</p>}
+                  {item.image_url && <img src={item.image_url} alt="Research Graph" className="w-full max-h-64 object-cover rounded-lg mt-4 border border-white/10" />}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ACHIEVEMENTS */}
+        {achievements.length > 0 && achievements[0].title && (
+          <section className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+            <h2 className="text-2xl font-bold text-purple-400 mb-6">Achievements</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {achievements.map((ach, idx) => (
+                <div key={idx} className="bg-black/30 p-4 rounded-xl border border-white/5 flex gap-4 items-start">
+                  {ach.image && <img src={ach.image} alt={ach.title} className="w-16 h-16 rounded-lg object-cover" />}
+                  <div>
+                    <h3 className="text-white font-bold text-sm">{ach.title}</h3>
+                    <p className="text-slate-400 text-xs mt-1">{ach.description}</p>
                   </div>
-                  <p className="text-slate-400 text-sm">{proj.description}</p>
                 </div>
               ))}
             </div>
-          </motion.section>
+          </section>
+        )}
 
-        </motion.div>
+        {/* GALLERY */}
+        {gallery.length > 0 && gallery[0].image && (
+          <section className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+            <h2 className="text-2xl font-bold text-cyan-400 mb-6">Gallery</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {gallery.map((item, idx) => (
+                item.image ? (
+                  <div key={idx} className="group relative aspect-square rounded-xl overflow-hidden border border-white/10">
+                    <img src={item.image} alt={item.caption || "Gallery image"} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    {item.caption && (
+                      <div className="absolute bottom-0 left-0 w-full bg-black/70 p-2 transform translate-y-full group-hover:translate-y-0 transition-transform">
+                        <p className="text-xs text-center text-white">{item.caption}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : null
+              ))}
+            </div>
+          </section>
+        )}
+
       </div>
     </div>
   );

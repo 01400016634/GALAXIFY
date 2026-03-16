@@ -144,21 +144,38 @@ const Dashboard = () => {
   };
 
   const handlePublish = async () => {
-    if (!currentUser) return;
+    if (!currentUser) return alert("You must be logged in!");
+    
+    // 1. Turn on the Publish button spinner
     setIsPublishing(true);
+
     try {
+      // 2. Hard check: Is Firebase even initialized?
+      if (!db) {
+        throw new Error("Database connection broken. Check your firebase.js config.");
+      }
+
+      console.log(`Attempting to publish for user: ${currentUser.uid}`);
+
+      // 3. Clean the data to prevent Firebase formatting errors
       const sanitizedData = JSON.parse(JSON.stringify(formData));
+      
+      // 4. Send to Firebase using your anti-freeze timeout wrapper
       await withTimeout(setDoc(doc(db, "portfolios", currentUser.uid), {
         ...sanitizedData,
         userId: currentUser.uid,
         publishedAt: serverTimestamp(),
         isPublished: true,
       }));
+
       alert(`Success! Your portfolio is published.`);
+
     } catch (error) {
-      console.error("Error publishing:", error);
-      alert("Failed to publish. Check console.");
+      console.error("Publishing failed:", error);
+      // Show the exact error message to the user so you know if it timed out or went offline
+      alert(`Publishing failed: ${error.message}`); 
     } finally {
+      // 5. GUARANTEED to stop the loading spinner, even if Firebase crashes
       setIsPublishing(false);
     }
   };
