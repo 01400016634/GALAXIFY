@@ -3,12 +3,19 @@ import { useAuth } from '../context/AuthContext';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db, storage } from '../services/firebase';
 import { generateExperience, generateResearchAnalysis } from '../services/gemini';
-import PDFUploader from '../components/dashboard/PDFUploader';
 import { 
   Wand2, Upload, Link as LinkIcon, Github, Linkedin, Mail, 
   Plus, Trash2, Globe, MessageCircle, Facebook, Loader2, 
-  Save, Eye, Rocket, Layout, Image as ImageIcon, Sparkles, FileText
+  Save, Eye, Rocket, Layout, Image as ImageIcon, Sparkles, FileText, GraduationCap
 } from 'lucide-react';
+
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Set up the worker for PDF.js (Vite compatible)
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
@@ -17,6 +24,7 @@ const Dashboard = () => {
   const [lastSaved, setLastSaved] = useState(null);
   const [generating, setGenerating] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExtracting, setIsExtracting] = useState(false);
   const isFirstLoad = useRef(true);
 
   const [formData, setFormData] = useState({
@@ -39,6 +47,7 @@ const Dashboard = () => {
       { name: 'React', level: 80 },
       { name: 'Design', level: 60 }
     ],
+    education: [{ degree: '', institution: '', year: '' }],
     experience: [{ jobTitle: '', company: '', date: '', responsibilities: '', description: '' }],
     projects: [{ title: '', description: '', link: '', image_url: '' }],
     research: [{ title: '', description: '', link: '', analysis_ai: '', picture_url: '' }],
@@ -232,6 +241,75 @@ const Dashboard = () => {
   };
 
 
+  // --- AI Resume Extraction Handler ---
+  const handleResumeExtraction = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsExtracting(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+      let fullText = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        fullText += textContent.items.map(item => item.str).join(' ') + '\n';
+      }
+
+      // NOTE: Replace YOUR_PROJECT_ID with your actual Firebase project ID before deployment
+      const functionUrl = 'http://127.0.0.1:5001/galaxify-ai-9bd6a/us-central1/extractResume'; 
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: fullText }),
+      });
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const extractedData = await response.json();
+
+      // Auto-fill inputs using AI response natively into Dashboard state
+      setFormData(prev => {
+        const newSkills = extractedData.skills 
+          ? extractedData.skills.map(s => ({ name: typeof s === 'string' ? s : s.name || '', level: 70 })) 
+          : prev.skills;
+          
+        const newEducation = extractedData.education && extractedData.education.length > 0 
+          ? extractedData.education.map(e => ({
+              degree: e.degree || e.title || '',
+              institution: e.institution || e.school || e.company || '',
+              year: e.year || e.date || e.duration || ''
+            }))
+          : prev.education;
+
+        const newExperience = extractedData.experience && extractedData.experience.length > 0
+          ? extractedData.experience.map(exp => ({
+              jobTitle: exp.jobTitle || exp.title || exp.role || '',
+              company: exp.company || exp.organization || '',
+              date: exp.date || exp.duration || '',
+              responsibilities: exp.responsibilities ? (Array.isArray(exp.responsibilities) ? exp.responsibilities.join('\n') : exp.responsibilities) : '',
+              description: exp.description || ''
+            }))
+          : prev.experience;
+
+        return {
+          ...prev,
+          personal: { ...prev.personal, name: extractedData.name || prev.personal.name },
+          contact: { ...prev.contact, email: extractedData.email || prev.contact.email, phone: extractedData.phone || prev.contact.phone },
+          skills: newSkills,
+          education: newEducation,
+          experience: newExperience,
+        };
+      });
+    } catch (error) {
+      console.error("Error extracting PDF text:", error);
+      alert("Error processing PDF via AI. See console.");
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
   // --- File Upload Handlers ---
   const handleProfileUpload = async (e) => {
     const file = e.target.files[0];
@@ -367,6 +445,23 @@ const Dashboard = () => {
 
       <div className="max-w-[1600px] mx-auto p-6 grid grid-cols-12 gap-6">
         
+        {/* AI Magic Resume Banner */}
+        <div className="col-span-12 bg-gradient-to-r from-cyan-500/10 to-purple-600/10 border border-cyan-500/30 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between shadow-[0_0_30px_rgba(6,182,212,0.1)]">
+          <div>
+            <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-2">
+              <Sparkles className="text-cyan-400" /> Auto-Fill with AI
+            </h2>
+            <p className="text-sm text-slate-300">Upload your PDF resume and let our AI instantly map and populate your portfolio fields below.</p>
+          </div>
+          <div className="mt-4 md:mt-0 shrink-0">
+            <label className={`bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white px-6 py-3 rounded-full font-bold shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all flex items-center gap-2 ${isExtracting ? 'opacity-80 cursor-not-allowed' : 'cursor-pointer'}`}>
+              {isExtracting ? <Loader2 className="animate-spin" size={18} /> : <FileText size={18} />}
+              {isExtracting ? 'Extracting Data...' : 'Upload PDF Resume'}
+              <input type="file" accept="application/pdf" className="hidden" onChange={handleResumeExtraction} disabled={isExtracting} />
+            </label>
+          </div>
+        </div>
+
         {/* Grid Area 1: Personal & About (Full Width) */}
         <div className={`col-span-12 ${glassCard} flex flex-col md:flex-row gap-8 items-start`}>
           <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-[80px] pointer-events-none" />
@@ -522,95 +617,146 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <PDFUploader setFormData={setFormData} />
-
         </div>
 
-        {/* Grid Area 3: The Journey - Experience (Right Column) */}
-        <div className={`col-span-12 lg:col-span-7 ${glassCard}`}>
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-white flex items-center gap-2"><Rocket size={20} className="text-cyan-400" /> Experience Journey</h3>
-            <button onClick={() => addItem('experience', { jobTitle: '', company: '', date: '', responsibilities: '', description: '' })} className={neonButton}><Plus size={16} /> Add Role</button>
-          </div>
-          
-          <div className="space-y-8">
-            {(Array.isArray(formData?.experience) ? formData.experience : []).map((exp, idx) => (
-              <div key={idx} className="relative pl-6 border-l-2 border-white/10 hover:border-cyan-500/50 transition-colors pb-8 last:pb-0">
-                <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-black border-2 border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
-                <button onClick={() => removeItem('experience', idx)} className="absolute top-0 right-0 text-slate-600 hover:text-red-400"><Trash2 size={16} /></button>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className={labelStyle}>Job Title</label>
+        {/* Grid Area 3: The Journey - Experience & Education (Right Column) */}
+        <div className="col-span-12 lg:col-span-7 flex flex-col gap-6">
+          <div className={glassCard}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2"><Rocket size={20} className="text-cyan-400" /> Experience Journey</h3>
+              <button onClick={() => addItem('experience', { jobTitle: '', company: '', date: '', responsibilities: '', description: '' })} className={neonButton}><Plus size={16} /> Add Role</button>
+            </div>
+            
+            <div className="space-y-8">
+              {(Array.isArray(formData?.experience) ? formData.experience : []).map((exp, idx) => (
+                <div key={idx} className="relative pl-6 border-l-2 border-white/10 hover:border-cyan-500/50 transition-colors pb-8 last:pb-0">
+                  <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-black border-2 border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
+                  <button onClick={() => removeItem('experience', idx)} className="absolute top-0 right-0 text-slate-600 hover:text-red-400"><Trash2 size={16} /></button>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className={labelStyle}>Job Title</label>
+                      <input 
+                        type="text" 
+                        value={exp?.jobTitle || ""} 
+                        onChange={(e) => handleArrayChange('experience', idx, 'jobTitle', e.target.value)}
+                        className={inputStyle} 
+                        placeholder="Senior Developer"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelStyle}>Company</label>
+                      <input 
+                        type="text" 
+                        value={exp?.company || ""} 
+                        onChange={(e) => handleArrayChange('experience', idx, 'company', e.target.value)}
+                        className={inputStyle} 
+                        placeholder="Tech Corp"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <label className={labelStyle}>Date Range</label>
                     <input 
                       type="text" 
-                      value={exp?.jobTitle || ""} 
-                      onChange={(e) => handleArrayChange('experience', idx, 'jobTitle', e.target.value)}
+                      value={exp?.date || ""} 
+                      onChange={(e) => handleArrayChange('experience', idx, 'date', e.target.value)}
                       className={inputStyle} 
-                      placeholder="Senior Developer"
+                      placeholder="Jan 2020 - Present"
                     />
                   </div>
-                  <div>
-                    <label className={labelStyle}>Company</label>
-                    <input 
-                      type="text" 
-                      value={exp?.company || ""} 
-                      onChange={(e) => handleArrayChange('experience', idx, 'company', e.target.value)}
-                      className={inputStyle} 
-                      placeholder="Tech Corp"
-                    />
-                  </div>
-                </div>
-                
-                <div className="mb-4">
-                  <label className={labelStyle}>Date Range</label>
-                  <input 
-                    type="text" 
-                    value={exp?.date || ""} 
-                    onChange={(e) => handleArrayChange('experience', idx, 'date', e.target.value)}
-                    className={inputStyle} 
-                    placeholder="Jan 2020 - Present"
-                  />
-                </div>
 
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="relative">
-                    <label className={labelStyle}>Responsibilities (AI)</label>
-                    <textarea 
-                      rows={4} 
-                      value={exp?.responsibilities || ""} 
-                      onChange={(e) => handleArrayChange('experience', idx, 'responsibilities', e.target.value)}
-                      className={inputStyle} 
-                      placeholder="Bullet points..."
-                    />
-                    <button 
-                      onClick={() => handleExperienceAi(idx, 'responsibilities')}
-                      disabled={generating?.type === 'exp' && generating?.index === idx && generating?.field === 'responsibilities'}
-                      className="absolute top-8 right-2 text-cyan-400 hover:text-white p-1"
-                    >
-                      {generating?.type === 'exp' && generating?.index === idx && generating?.field === 'responsibilities' ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <label className={labelStyle}>Description (AI)</label>
-                    <textarea 
-                      rows={4} 
-                      value={exp?.description || ""} 
-                      onChange={(e) => handleArrayChange('experience', idx, 'description', e.target.value)}
-                      className={inputStyle} 
-                      placeholder="Role summary..."
-                    />
-                    <button 
-                      onClick={() => handleExperienceAi(idx, 'description')}
-                      disabled={generating?.type === 'exp' && generating?.index === idx && generating?.field === 'description'}
-                      className="absolute top-8 right-2 text-cyan-400 hover:text-white p-1"
-                    >
-                      {generating?.type === 'exp' && generating?.index === idx && generating?.field === 'description' ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-                    </button>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="relative">
+                      <label className={labelStyle}>Responsibilities (AI)</label>
+                      <textarea 
+                        rows={4} 
+                        value={exp?.responsibilities || ""} 
+                        onChange={(e) => handleArrayChange('experience', idx, 'responsibilities', e.target.value)}
+                        className={inputStyle} 
+                        placeholder="Bullet points..."
+                      />
+                      <button 
+                        onClick={() => handleExperienceAi(idx, 'responsibilities')}
+                        disabled={generating?.type === 'exp' && generating?.index === idx && generating?.field === 'responsibilities'}
+                        className="absolute top-8 right-2 text-cyan-400 hover:text-white p-1"
+                      >
+                        {generating?.type === 'exp' && generating?.index === idx && generating?.field === 'responsibilities' ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <label className={labelStyle}>Description (AI)</label>
+                      <textarea 
+                        rows={4} 
+                        value={exp?.description || ""} 
+                        onChange={(e) => handleArrayChange('experience', idx, 'description', e.target.value)}
+                        className={inputStyle} 
+                        placeholder="Role summary..."
+                      />
+                      <button 
+                        onClick={() => handleExperienceAi(idx, 'description')}
+                        disabled={generating?.type === 'exp' && generating?.index === idx && generating?.field === 'description'}
+                        className="absolute top-8 right-2 text-cyan-400 hover:text-white p-1"
+                      >
+                        {generating?.type === 'exp' && generating?.index === idx && generating?.field === 'description' ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+
+          {/* Education Section */}
+          <div className={glassCard}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2"><GraduationCap size={20} className="text-purple-400" /> Education</h3>
+              <button onClick={() => addItem('education', { degree: '', institution: '', year: '' })} className={neonButton}><Plus size={16} /> Add Education</button>
+            </div>
+            
+            <div className="space-y-6">
+              {(Array.isArray(formData?.education) ? formData.education : []).map((edu, idx) => (
+                <div key={idx} className="relative pl-6 border-l-2 border-white/10 hover:border-cyan-500/50 transition-colors pb-4 last:pb-0">
+                  <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-black border-2 border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
+                  <button onClick={() => removeItem('education', idx)} className="absolute top-0 right-0 text-slate-600 hover:text-red-400"><Trash2 size={16} /></button>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className={labelStyle}>Degree / Certification</label>
+                      <input 
+                        type="text" 
+                        value={edu?.degree || ""} 
+                        onChange={(e) => handleArrayChange('education', idx, 'degree', e.target.value)}
+                        className={inputStyle} 
+                        placeholder="e.g. B.S. Computer Science"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelStyle}>Institution</label>
+                      <input 
+                        type="text" 
+                        value={edu?.institution || ""} 
+                        onChange={(e) => handleArrayChange('education', idx, 'institution', e.target.value)}
+                        className={inputStyle} 
+                        placeholder="e.g. Stanford University"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className={labelStyle}>Year / Date Range</label>
+                    <input 
+                      type="text" 
+                      value={edu?.year || ""} 
+                      onChange={(e) => handleArrayChange('education', idx, 'year', e.target.value)}
+                      className={inputStyle} 
+                      placeholder="e.g. 2018 - 2022"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 

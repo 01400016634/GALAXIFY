@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import { ExternalLink, Mail, MapPin, Calendar, Award, BookOpen, Briefcase, GraduationCap } from 'lucide-react';
 import GalaxyTheme from '../themes/GalaxyTheme';
 import LavaTheme from '../themes/LavaTheme';
 import ForestTheme from '../themes/ForestTheme';
@@ -9,7 +10,7 @@ import NeonTechTheme from '../themes/NeonTechTheme';
 
 const PortfolioView = () => {
   const { username } = useParams();
-  const [portfolioData, setPortfolioData] = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -21,7 +22,7 @@ const PortfolioView = () => {
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-          setPortfolioData(docSnap.data());
+          setData(docSnap.data());
         } else {
           setError('Portfolio not found');
         }
@@ -54,23 +55,23 @@ const PortfolioView = () => {
     );
   }
 
-  if (!portfolioData) return null;
+  if (!data) return null;
 
   // Determine which theme to render based on the data
-  const theme = (portfolioData.theme || 'space').toLowerCase();
+  const theme = (data.theme || 'space').toLowerCase();
 
   switch (theme) {
     case 'lava':
-      return <LavaTheme portfolioData={portfolioData} />;
+      return <LavaTheme portfolioData={data} />;
     case 'forest':
-      return <ForestTheme portfolioData={portfolioData} />;
+      return <ForestTheme portfolioData={data} />;
     case 'cyberpunk':
     case 'neon':
-      return <NeonTechTheme portfolioData={portfolioData} />;
+      return <NeonTechTheme portfolioData={data} />;
     case 'space':
     case 'galaxy':
     default:
-      return <GalaxyTheme portfolioData={portfolioData} />;
+      return <GalaxyTheme portfolioData={data} />;
   }
 };
 

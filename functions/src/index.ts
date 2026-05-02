@@ -10,6 +10,8 @@
 import {setGlobalOptions} from "firebase-functions";
 import {onRequest} from "firebase-functions/https";
 import * as logger from "firebase-functions/logger";
+import * as cors from "cors";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
@@ -26,7 +28,58 @@ import * as logger from "firebase-functions/logger";
 // this will be the maximum concurrent request count.
 setGlobalOptions({ maxInstances: 10 });
 
-// export const helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+const corsHandler = cors({ origin: true });
+
+export const extractResume = onRequest((req, res) => {
+  corsHandler(req, res, async () => {
+    if (req.method !== "POST") {
+      res.status(405).send({ error: "Method Not Allowed" });
+      return;
+    }
+
+    try {
+      const { text } = req.body;
+      
+      if (!text) {
+        res.status(400).json({ error: "No text provided" });
+        return;
+      }
+
+      // Initialize Gemini (Ensure your API key is available in your functions environment)
+      const apiKey = process.env.GEMINI_API_KEY || "YOUR_GEMINI_API_KEY_HERE";
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      
+      const prompt = `
+        Analyze the following resume text and extract the details into a STRICT JSON format.
+        Return ONLY the raw JSON string. Do not include markdown code blocks.
+        
+        Structure:
+        {
+          "personal": { "name": "string", "designation": "string" },
+          "about": "string",
+          "skills": [{ "name": "string", "level": 80 }],
+          "experience": [{ "jobTitle": "string", "company": "string", "date": "string", "responsibilities": "string", "description": "string" }],
+          "contact": { "linkedin": "string", "github": "string", "email": "string", "phone": "string" }
+        }
+
+        Resume Text:
+        ${text}
+      `;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const responseText = response.text();
+      
+      // Clean up potential markdown formatting
+      const cleanText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+      const jsonData = JSON.parse(cleanText);
+
+      // SEND THE SUCCESSFUL RESPONSE
+      res.status(200).json(jsonData);
+    } catch (error: any) {
+      logger.error("Extraction Error:", error);
+      res.status(500).json({ error: "Failed to extract resume data." });
+    }
+  });
+});
