@@ -3,10 +3,10 @@ import { useAuth } from '../context/AuthContext';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db, storage } from '../services/firebase';
 import { generateExperience, generateResearchAnalysis } from '../services/gemini';
-import { 
-  Wand2, Upload, Link as LinkIcon, Github, Linkedin, Mail, 
-  Plus, Trash2, Globe, MessageCircle, Facebook, Loader2, 
-  Save, Eye, Rocket, Layout, Image as ImageIcon, Sparkles, FileText, GraduationCap
+import {
+  Wand2, Upload, Link as LinkIcon, Github, Linkedin, Mail,
+  Plus, Trash2, Globe, MessageCircle, Facebook, Loader2,
+  Save, Eye, Rocket, Layout, Image as ImageIcon, Sparkles, FileText, GraduationCap, Crown
 } from 'lucide-react';
 
 import * as pdfjsLib from 'pdfjs-dist';
@@ -61,19 +61,54 @@ const Dashboard = () => {
     customDomain: ''
   });
 
-  // --- Fetch Existing Data ---
+  // --- Fetch Existing Data & Sync to Owner Database (CACHE DISABLED) ---
   useEffect(() => {
     if (currentUser) {
       const fetchData = async () => {
         try {
+          // 1. Fetch their portfolio data from Firebase
           const docRef = doc(db, "portfolios", currentUser.uid);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
-            // Merge existing data with default structure
             setFormData(prev => ({ ...prev, ...docSnap.data() }));
           }
+
+          // 2. NEW: Fetch fresh MongoDB data with a Timestamp Cache-Buster
+          const timestamp = new Date().getTime();
+          const mongoResponse = await fetch(`http://localhost:5001/api/user/portfolio/${currentUser.uid}?t=${timestamp}`, {
+            method: 'GET',
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
+            }
+          });
+
+          if (mongoResponse.ok) {
+            const mongoData = await mongoResponse.json();
+            // This strictly applies the plan from your MongoDB Owner CMS!
+            if (mongoData.user) {
+              setFormData(prev => ({
+                ...prev,
+                isPro: mongoData.user.plan === 'pro' || mongoData.user.plan === 'premium',
+                planName: mongoData.user.plan
+              }));
+            }
+          }
+
+          // 3. Silently sync them to your MongoDB Owner Panel
+          await fetch('http://localhost:5001/api/owner/sync-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: currentUser.displayName || "Galaxify User",
+              email: currentUser.email,
+              uid: currentUser.uid
+            })
+          });
+
         } catch (error) {
-          console.error("Error fetching data:", error);
+          console.error("Error fetching or syncing data:", error);
         } finally {
           setIsLoading(false);
         }
@@ -115,7 +150,7 @@ const Dashboard = () => {
           userId: currentUser.uid,
           lastSaved: serverTimestamp()
         }, { merge: true });
-        
+
         console.log("✨ Autosave SUCCESS!");
         setLastSaved(new Date());
       } catch (error) {
@@ -145,7 +180,7 @@ const Dashboard = () => {
       }
 
       // Quick safety check to prevent crashing the free database
-      if (file.size > 1048576) { 
+      if (file.size > 1048576) {
         alert(`File ${file.name} is too large! Please keep files under 1MB for the free tier.`);
         resolve(null);
         return;
@@ -185,9 +220,9 @@ const Dashboard = () => {
   };
 
   const addItem = (arrayName, newItem) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      [arrayName]: [...(Array.isArray(prev[arrayName]) ? prev[arrayName] : []), newItem] 
+    setFormData(prev => ({
+      ...prev,
+      [arrayName]: [...(Array.isArray(prev[arrayName]) ? prev[arrayName] : []), newItem]
     }));
   };
 
@@ -198,8 +233,32 @@ const Dashboard = () => {
       return { ...prev, [arrayName]: newArray };
     });
   };
+  const handleBuyPro = async () => {
+    if (!currentUser) return alert("Please log in to upgrade.");
 
+    try {
+      const response = await fetch('http://localhost:5001/api/payment/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: currentUser.uid, plan: 'pro' })
+      });
 
+      if (response.ok) {
+        alert("🎉 Successfully Upgraded to PRO!");
+
+        // INSTANTLY update the UI so the box turns Green!
+        setFormData(prev => ({
+          ...prev,
+          isPro: true,
+          planName: 'pro'
+        }));
+      } else {
+        alert("Server failed to update database.");
+      }
+    } catch (error) {
+      alert("Payment gateway connection failed. Is Port 5001 running?");
+    }
+  };
   // --- AI Handlers ---
   const handleExperienceAi = async (index, field) => {
     const exp = formData.experience[index];
@@ -258,7 +317,7 @@ const Dashboard = () => {
       }
 
       // NOTE: Replace YOUR_PROJECT_ID with your actual Firebase project ID before deployment
-      const functionUrl = 'http://127.0.0.1:5001/galaxify-ai-9bd6a/us-central1/extractResume'; 
+      const functionUrl = 'http://127.0.0.1:5001/galaxify-ai-9bd6a/us-central1/extractResume';
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -266,31 +325,31 @@ const Dashboard = () => {
       });
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      
+
       const extractedData = await response.json();
 
       // Auto-fill inputs using AI response natively into Dashboard state
       setFormData(prev => {
-        const newSkills = extractedData.skills 
-          ? extractedData.skills.map(s => ({ name: typeof s === 'string' ? s : s.name || '', level: 70 })) 
+        const newSkills = extractedData.skills
+          ? extractedData.skills.map(s => ({ name: typeof s === 'string' ? s : s.name || '', level: 70 }))
           : prev.skills;
-          
-        const newEducation = extractedData.education && extractedData.education.length > 0 
+
+        const newEducation = extractedData.education && extractedData.education.length > 0
           ? extractedData.education.map(e => ({
-              degree: e.degree || e.title || '',
-              institution: e.institution || e.school || e.company || '',
-              year: e.year || e.date || e.duration || ''
-            }))
+            degree: e.degree || e.title || '',
+            institution: e.institution || e.school || e.company || '',
+            year: e.year || e.date || e.duration || ''
+          }))
           : prev.education;
 
         const newExperience = extractedData.experience && extractedData.experience.length > 0
           ? extractedData.experience.map(exp => ({
-              jobTitle: exp.jobTitle || exp.title || exp.role || '',
-              company: exp.company || exp.organization || '',
-              date: exp.date || exp.duration || '',
-              responsibilities: exp.responsibilities ? (Array.isArray(exp.responsibilities) ? exp.responsibilities.join('\n') : exp.responsibilities) : '',
-              description: exp.description || ''
-            }))
+            jobTitle: exp.jobTitle || exp.title || exp.role || '',
+            company: exp.company || exp.organization || '',
+            date: exp.date || exp.duration || '',
+            responsibilities: exp.responsibilities ? (Array.isArray(exp.responsibilities) ? exp.responsibilities.join('\n') : exp.responsibilities) : '',
+            description: exp.description || ''
+          }))
           : prev.experience;
 
         return {
@@ -314,7 +373,7 @@ const Dashboard = () => {
   const handleProfileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     // Convert to Base64 immediately so it saves to Firestore Drafts
     const url = await uploadFileToStorage(file, `users/${currentUser.uid}/profile_${Date.now()}`);
     if (url) handleFieldChange('personal', 'profilePicture', url);
@@ -347,7 +406,7 @@ const Dashboard = () => {
   const handleAchievementImageUpload = async (index, e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     const url = await uploadFileToStorage(file, `users/${currentUser.uid}/achievements/${Date.now()}`);
     if (url) handleArrayChange('achievements', index, 'image', url);
   };
@@ -355,7 +414,7 @@ const Dashboard = () => {
   const handleGalleryImageUpload = async (index, e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     const url = await uploadFileToStorage(file, `users/${currentUser.uid}/gallery/${Date.now()}`);
     if (url) handleArrayChange('gallery', index, 'image', url);
   };
@@ -371,7 +430,7 @@ const Dashboard = () => {
 
   const handlePublish = async () => {
     if (!currentUser) return alert("You must be logged in!");
-    
+
     // 1. Check if Firebase DB is actually connected!
     if (!db) {
       alert("❌ FIREBASE CRASH: Your database connection is broken. Check src/services/firebase.js");
@@ -379,7 +438,7 @@ const Dashboard = () => {
     }
 
     setIsPublishing(true);
-    
+
     try {
       console.log("Attempting to publish for user:", currentUser.uid);
       const sanitizedData = JSON.parse(JSON.stringify(formData));
@@ -411,7 +470,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen w-full bg-[#0a0e17] text-slate-200 font-sans selection:bg-cyan-500/30 pb-20">
-      
+
       {/* Top Header */}
       <header className="sticky top-0 z-50 bg-[#0a0e17]/80 backdrop-blur-md border-b border-white/5 px-8 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
@@ -422,7 +481,7 @@ const Dashboard = () => {
             GALAXIFY <span className="text-cyan-400">AI</span>
           </h1>
         </div>
-        
+
         <div className="flex items-center gap-6">
           <div className="text-right hidden md:block">
             <span className="block text-xs text-slate-400">Auto-save Status</span>
@@ -443,10 +502,37 @@ const Dashboard = () => {
         </div>
       </header>
 
+      {/* MASTER GRID CONTAINER */}
       <div className="max-w-[1600px] mx-auto p-6 grid grid-cols-12 gap-6">
-        
-        {/* AI Magic Resume Banner */}
-        <div className="col-span-12 bg-gradient-to-r from-cyan-500/10 to-purple-600/10 border border-cyan-500/30 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between shadow-[0_0_30px_rgba(6,182,212,0.1)]">
+
+        {/* 👇 1. CONDITIONAL PRO PLAN UPGRADE BOX 👇 */}
+        <div className="col-span-12 lg:col-span-3">
+          {formData?.isPro ? (
+            <div className="h-full p-6 bg-gradient-to-br from-green-900/40 to-emerald-900/40 border border-green-500/20 rounded-2xl flex flex-col justify-center shadow-[0_0_30px_rgba(16,185,129,0.1)]">
+              <h4 className="text-white font-bold flex items-center gap-2 mb-2">
+                <Crown size={20} className="text-green-400" /> PRO ACTIVE
+              </h4>
+              <p className="text-sm text-green-500/80 mb-4">All premium themes unlocked.</p>
+              <div className="w-full py-3 bg-green-500/10 border border-green-500/30 text-green-400 text-sm font-bold rounded-xl text-center">
+                Lifetime Access
+              </div>
+            </div>
+          ) : (
+            <div className="h-full p-6 bg-gradient-to-br from-indigo-900/40 to-purple-900/40 border border-purple-500/20 rounded-2xl flex flex-col justify-center shadow-[0_0_30px_rgba(168,85,247,0.1)]">
+              <h4 className="text-white font-bold flex items-center gap-2 mb-2">
+                <Crown size={20} className="text-yellow-500" /> Pro Plan
+              </h4>
+              <p className="text-sm text-slate-400 mb-4">Unlock premium themes & features.</p>
+              <button onClick={handleBuyPro} className="w-full py-3 bg-white text-black text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors shadow-lg flex justify-center items-center gap-2">
+                Upgrade Now
+              </button>
+            </div>
+          )}
+        </div>
+        {/* 👆 END OF PRO PLAN BOX 👆 */}
+
+        {/* 2. AI Magic Resume Banner (Adjusted to col-span-9 so it sits next to the Pro Box) */}
+        <div className="col-span-12 lg:col-span-9 bg-gradient-to-r from-cyan-500/10 to-purple-600/10 border border-cyan-500/30 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between shadow-[0_0_30px_rgba(6,182,212,0.1)]">
           <div>
             <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-2">
               <Sparkles className="text-cyan-400" /> Auto-Fill with AI
@@ -465,14 +551,14 @@ const Dashboard = () => {
         {/* Grid Area 1: Personal & About (Full Width) */}
         <div className={`col-span-12 ${glassCard} flex flex-col md:flex-row gap-8 items-start`}>
           <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-[80px] pointer-events-none" />
-          
+
           <div className="flex-1 w-full space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className={labelStyle}>Full Name</label>
-                <input 
-                  type="text" 
-                  value={formData?.personal?.name || ""} 
+                <input
+                  type="text"
+                  value={formData?.personal?.name || ""}
                   onChange={(e) => handleFieldChange('personal', 'name', e.target.value)}
                   className={`${inputStyle} text-lg font-bold`}
                   placeholder="e.g. Alex Chen"
@@ -480,9 +566,9 @@ const Dashboard = () => {
               </div>
               <div>
                 <label className={labelStyle}>Designation</label>
-                <input 
-                  type="text" 
-                  value={formData?.personal?.designation || ""} 
+                <input
+                  type="text"
+                  value={formData?.personal?.designation || ""}
                   onChange={(e) => handleFieldChange('personal', 'designation', e.target.value)}
                   className={inputStyle}
                   placeholder="e.g. Senior Product Designer"
@@ -495,10 +581,10 @@ const Dashboard = () => {
               <div className="flex items-center gap-4">
                 <div className="h-16 w-16 rounded-full bg-black/40 border border-white/10 flex items-center justify-center overflow-hidden">
                   {formData?.personal?.profilePicture ? (
-                    <img 
-                      src={formData.personal.profilePicture instanceof File ? URL.createObjectURL(formData.personal.profilePicture) : formData.personal.profilePicture} 
-                      alt="Profile" 
-                      className="h-full w-full object-cover" 
+                    <img
+                      src={formData.personal.profilePicture instanceof File ? URL.createObjectURL(formData.personal.profilePicture) : formData.personal.profilePicture}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
                     <ImageIcon size={20} className="text-slate-500" />
@@ -510,10 +596,10 @@ const Dashboard = () => {
                 </label>
               </div>
             </div>
-            
+
             <div className="relative mt-4">
               <label className={labelStyle}>About Me (AI Powered)</label>
-              <textarea 
+              <textarea
                 rows={3}
                 value={formData?.about || ""}
                 onChange={(e) => handleFieldChange('root', 'about', e.target.value)}
@@ -541,7 +627,7 @@ const Dashboard = () => {
 
         {/* Grid Area 2: Skills & Research (Left Column) */}
         <div className="col-span-12 lg:col-span-5 flex flex-col gap-6">
-          
+
           {/* Skills Card */}
           <div className={glassCard}>
             <div className="flex justify-between items-center mb-4">
@@ -552,19 +638,19 @@ const Dashboard = () => {
               {(Array.isArray(formData?.skills) ? formData.skills : []).map((skill, idx) => (
                 <div key={idx} className="bg-black/20 p-3 rounded-lg border border-white/5 group">
                   <div className="flex justify-between mb-2">
-                    <input 
-                      type="text" 
-                      value={skill?.name || ""} 
+                    <input
+                      type="text"
+                      value={skill?.name || ""}
                       onChange={(e) => handleArrayChange('skills', idx, 'name', e.target.value)}
                       className="bg-transparent border-none text-sm text-white focus:ring-0 p-0 w-full"
                       placeholder="Skill Name"
                     />
                     <button onClick={() => removeItem('skills', idx)} className="text-slate-600 hover:text-red-400"><Trash2 size={14} /></button>
                   </div>
-                  <input 
-                    type="range" 
-                    min="0" max="100" 
-                    value={skill?.level || 0} 
+                  <input
+                    type="range"
+                    min="0" max="100"
+                    value={skill?.level || 0}
                     onChange={(e) => handleArrayChange('skills', idx, 'level', parseInt(e.target.value))}
                     className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                   />
@@ -583,22 +669,22 @@ const Dashboard = () => {
               {(Array.isArray(formData?.research) ? formData.research : []).map((paper, idx) => (
                 <div key={idx} className="bg-black/20 p-4 rounded-xl border border-white/5 space-y-3 relative">
                   <button onClick={() => removeItem('research', idx)} className="absolute top-3 right-3 text-slate-600 hover:text-red-400"><Trash2 size={14} /></button>
-                  <input 
-                    type="text" 
-                    value={paper?.title || ""} 
+                  <input
+                    type="text"
+                    value={paper?.title || ""}
                     onChange={(e) => handleArrayChange('research', idx, 'title', e.target.value)}
-                    className={inputStyle} 
+                    className={inputStyle}
                     placeholder="Paper Title"
                   />
                   <div className="relative">
-                    <textarea 
-                      rows={3} 
-                      value={paper?.analysis_ai || ""} 
+                    <textarea
+                      rows={3}
+                      value={paper?.analysis_ai || ""}
                       onChange={(e) => handleArrayChange('research', idx, 'analysis_ai', e.target.value)}
-                      className={`${inputStyle} text-xs`} 
+                      className={`${inputStyle} text-xs`}
                       placeholder="AI Analysis..."
                     />
-                    <button 
+                    <button
                       onClick={() => handleResearchAi(idx)}
                       disabled={generating?.type === 'research' && generating?.index === idx}
                       className="absolute bottom-2 right-2 text-cyan-400 hover:text-white"
@@ -626,43 +712,43 @@ const Dashboard = () => {
               <h3 className="text-xl font-bold text-white flex items-center gap-2"><Rocket size={20} className="text-cyan-400" /> Experience Journey</h3>
               <button onClick={() => addItem('experience', { jobTitle: '', company: '', date: '', responsibilities: '', description: '' })} className={neonButton}><Plus size={16} /> Add Role</button>
             </div>
-            
+
             <div className="space-y-8">
               {(Array.isArray(formData?.experience) ? formData.experience : []).map((exp, idx) => (
                 <div key={idx} className="relative pl-6 border-l-2 border-white/10 hover:border-cyan-500/50 transition-colors pb-8 last:pb-0">
                   <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-black border-2 border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
                   <button onClick={() => removeItem('experience', idx)} className="absolute top-0 right-0 text-slate-600 hover:text-red-400"><Trash2 size={16} /></button>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className={labelStyle}>Job Title</label>
-                      <input 
-                        type="text" 
-                        value={exp?.jobTitle || ""} 
+                      <input
+                        type="text"
+                        value={exp?.jobTitle || ""}
                         onChange={(e) => handleArrayChange('experience', idx, 'jobTitle', e.target.value)}
-                        className={inputStyle} 
+                        className={inputStyle}
                         placeholder="Senior Developer"
                       />
                     </div>
                     <div>
                       <label className={labelStyle}>Company</label>
-                      <input 
-                        type="text" 
-                        value={exp?.company || ""} 
+                      <input
+                        type="text"
+                        value={exp?.company || ""}
                         onChange={(e) => handleArrayChange('experience', idx, 'company', e.target.value)}
-                        className={inputStyle} 
+                        className={inputStyle}
                         placeholder="Tech Corp"
                       />
                     </div>
                   </div>
-                  
+
                   <div className="mb-4">
                     <label className={labelStyle}>Date Range</label>
-                    <input 
-                      type="text" 
-                      value={exp?.date || ""} 
+                    <input
+                      type="text"
+                      value={exp?.date || ""}
                       onChange={(e) => handleArrayChange('experience', idx, 'date', e.target.value)}
-                      className={inputStyle} 
+                      className={inputStyle}
                       placeholder="Jan 2020 - Present"
                     />
                   </div>
@@ -670,14 +756,14 @@ const Dashboard = () => {
                   <div className="grid grid-cols-1 gap-4">
                     <div className="relative">
                       <label className={labelStyle}>Responsibilities (AI)</label>
-                      <textarea 
-                        rows={4} 
-                        value={exp?.responsibilities || ""} 
+                      <textarea
+                        rows={4}
+                        value={exp?.responsibilities || ""}
                         onChange={(e) => handleArrayChange('experience', idx, 'responsibilities', e.target.value)}
-                        className={inputStyle} 
+                        className={inputStyle}
                         placeholder="Bullet points..."
                       />
-                      <button 
+                      <button
                         onClick={() => handleExperienceAi(idx, 'responsibilities')}
                         disabled={generating?.type === 'exp' && generating?.index === idx && generating?.field === 'responsibilities'}
                         className="absolute top-8 right-2 text-cyan-400 hover:text-white p-1"
@@ -687,14 +773,14 @@ const Dashboard = () => {
                     </div>
                     <div className="relative">
                       <label className={labelStyle}>Description (AI)</label>
-                      <textarea 
-                        rows={4} 
-                        value={exp?.description || ""} 
+                      <textarea
+                        rows={4}
+                        value={exp?.description || ""}
                         onChange={(e) => handleArrayChange('experience', idx, 'description', e.target.value)}
-                        className={inputStyle} 
+                        className={inputStyle}
                         placeholder="Role summary..."
                       />
-                      <button 
+                      <button
                         onClick={() => handleExperienceAi(idx, 'description')}
                         disabled={generating?.type === 'exp' && generating?.index === idx && generating?.field === 'description'}
                         className="absolute top-8 right-2 text-cyan-400 hover:text-white p-1"
@@ -714,43 +800,43 @@ const Dashboard = () => {
               <h3 className="text-xl font-bold text-white flex items-center gap-2"><GraduationCap size={20} className="text-purple-400" /> Education</h3>
               <button onClick={() => addItem('education', { degree: '', institution: '', year: '' })} className={neonButton}><Plus size={16} /> Add Education</button>
             </div>
-            
+
             <div className="space-y-6">
               {(Array.isArray(formData?.education) ? formData.education : []).map((edu, idx) => (
                 <div key={idx} className="relative pl-6 border-l-2 border-white/10 hover:border-cyan-500/50 transition-colors pb-4 last:pb-0">
                   <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-black border-2 border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
                   <button onClick={() => removeItem('education', idx)} className="absolute top-0 right-0 text-slate-600 hover:text-red-400"><Trash2 size={16} /></button>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className={labelStyle}>Degree / Certification</label>
-                      <input 
-                        type="text" 
-                        value={edu?.degree || ""} 
+                      <input
+                        type="text"
+                        value={edu?.degree || ""}
                         onChange={(e) => handleArrayChange('education', idx, 'degree', e.target.value)}
-                        className={inputStyle} 
+                        className={inputStyle}
                         placeholder="e.g. B.S. Computer Science"
                       />
                     </div>
                     <div>
                       <label className={labelStyle}>Institution</label>
-                      <input 
-                        type="text" 
-                        value={edu?.institution || ""} 
+                      <input
+                        type="text"
+                        value={edu?.institution || ""}
                         onChange={(e) => handleArrayChange('education', idx, 'institution', e.target.value)}
-                        className={inputStyle} 
+                        className={inputStyle}
                         placeholder="e.g. Stanford University"
                       />
                     </div>
                   </div>
-                  
+
                   <div>
                     <label className={labelStyle}>Year / Date Range</label>
-                    <input 
-                      type="text" 
-                      value={edu?.year || ""} 
+                    <input
+                      type="text"
+                      value={edu?.year || ""}
                       onChange={(e) => handleArrayChange('education', idx, 'year', e.target.value)}
-                      className={inputStyle} 
+                      className={inputStyle}
                       placeholder="e.g. 2018 - 2022"
                     />
                   </div>
@@ -762,7 +848,7 @@ const Dashboard = () => {
 
         {/* Grid Area 4: Bottom Grid (Achievements, Gallery, Contact, Themes) */}
         <div className="col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          
+
           {/* Achievements */}
           <div className={glassCard}>
             <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-widest border-b border-white/10 pb-2">Achievements</h3>
@@ -770,16 +856,16 @@ const Dashboard = () => {
               {(Array.isArray(formData?.achievements) ? formData.achievements : []).map((ach, idx) => (
                 <div key={idx} className="bg-black/20 p-3 rounded-lg border border-white/5 space-y-2 relative">
                   <button onClick={() => removeItem('achievements', idx)} className="absolute top-2 right-2 text-slate-600 hover:text-red-400"><Trash2 size={14} /></button>
-                  <input 
-                    type="text" 
-                    value={ach?.title || ""} 
+                  <input
+                    type="text"
+                    value={ach?.title || ""}
                     onChange={(e) => handleArrayChange('achievements', idx, 'title', e.target.value)}
                     className="w-full bg-transparent border-b border-white/10 text-sm py-1 focus:border-cyan-500 outline-none font-bold text-slate-200"
                     placeholder="Award Title"
                   />
-                  <textarea 
+                  <textarea
                     rows={2}
-                    value={ach?.description || ""} 
+                    value={ach?.description || ""}
                     onChange={(e) => handleArrayChange('achievements', idx, 'description', e.target.value)}
                     className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:border-cyan-500 outline-none resize-none text-slate-300"
                     placeholder="Description..."
@@ -813,9 +899,9 @@ const Dashboard = () => {
                       <input type="file" className="hidden" accept="image/*" onChange={(e) => handleGalleryImageUpload(idx, e)} />
                     </label>
                   </div>
-                  <input 
-                    type="text" 
-                    value={item?.caption || ""} 
+                  <input
+                    type="text"
+                    value={item?.caption || ""}
                     onChange={(e) => handleArrayChange('gallery', idx, 'caption', e.target.value)}
                     className="w-full bg-transparent border-b border-white/10 text-[10px] py-1 focus:border-cyan-500 outline-none text-center text-slate-300"
                     placeholder="Caption"
@@ -854,9 +940,9 @@ const Dashboard = () => {
             <div className="grid grid-cols-2 gap-2">
               {/* FIXED THEME SELECTOR */}
               {['galaxy', 'lava', 'forest', 'neon'].map(themeOption => (
-                <div 
-                  key={themeOption} 
-                  onClick={() => setFormData(prev => ({ ...prev, theme: themeOption }))} 
+                <div
+                  key={themeOption}
+                  onClick={() => setFormData(prev => ({ ...prev, theme: themeOption }))}
                   className={`aspect-video rounded-lg overflow-hidden cursor-pointer relative border-2 transition-all ${formData.theme === themeOption ? 'border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'border-transparent opacity-60 hover:opacity-100'}`}
                 >
                   <div className="absolute inset-0 bg-slate-800 flex items-center justify-center">
@@ -865,6 +951,21 @@ const Dashboard = () => {
                 </div>
               ))}
             </div>
+
+            {/* Custom Domain Input (Only visible if PRO is active) */}
+            {formData?.isPro && (
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <label className={labelStyle}>Custom Domain (PRO)</label>
+                <input
+                  type="text"
+                  value={formData?.customDomain || ""}
+                  onChange={(e) => handleFieldChange('root', 'customDomain', e.target.value)}
+                  className={inputStyle}
+                  placeholder="e.g. www.myportfolio.com"
+                />
+              </div>
+            )}
+
             <div className="mt-4 pt-4 border-t border-white/10">
               <label className={labelStyle}>Public URL</label>
               <div className="flex items-center bg-black/40 rounded-lg px-3 py-2 border border-white/10">
