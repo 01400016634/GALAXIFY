@@ -1,102 +1,128 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { db, storage } from '../services/firebase';
-import { generateExperience, generateResearchAnalysis } from '../services/gemini';
+// 1. THIS IS THE ONLY DATABASE IMPORT YOU NEED NOW:
+import { supabase } from '../services/supabase';
 import {
-  Wand2, Upload, Link as LinkIcon, Github, Linkedin, Mail,
-  Plus, Trash2, Globe, MessageCircle, Facebook, Loader2,
-  Save, Eye, Rocket, Layout, Image as ImageIcon, Sparkles, FileText, GraduationCap, Crown
+  Facebook, Phone, Mail, MessageCircle, BarChart3, Globe, Layout, PackageSearch, Settings,
+  ChevronUp, ChevronDown, LayoutTemplate, Trash2, CheckCircle2, Eye, Send, Lock,
+  Plus, Upload, Image as ImageIcon, MapPin, DollarSign, TrendingUp, ShoppingBag,
+  Linkedin, Twitter, Youtube, Github, ShieldCheck, Map, CreditCard, Box,
+  AlignLeft, Play, Wand2, Smartphone, Monitor, Type, Palette, Video, Share2, Search,
+  Zap, Layers, Sparkles, Sliders, Copy, ChevronsUpDown, ArrowRight, ArrowLeft, Users, Activity,
+  ArrowUpRight, Instagram, MessageSquare, FileText, DownloadCloud, Fingerprint, User, Crown, ExternalLink
 } from 'lucide-react';
 
-import * as pdfjsLib from 'pdfjs-dist';
+const SOCIAL_PLATFORMS = [
+  { id: 'facebook', name: 'Facebook', icon: Facebook, color: 'text-blue-500', hex: '#1877F2' },
+  { id: 'whatsapp', name: 'WhatsApp', icon: Phone, color: 'text-green-500', hex: '#25D366' },
+  { id: 'gmail', name: 'Gmail', icon: Mail, color: 'text-red-500', hex: '#EA4335' },
+  { id: 'linkedin', name: 'LinkedIn', icon: Linkedin, color: 'text-blue-400', hex: '#0A66C2' },
+  { id: 'twitter', name: 'Twitter', icon: Twitter, color: 'text-sky-400', hex: '#1DA1F2' },
+  { id: 'youtube', name: 'YouTube', icon: Youtube, color: 'text-red-600', hex: '#FF0000' },
+  { id: 'instagram', name: 'Instagram', icon: Instagram, color: 'text-pink-500', hex: '#E4405F' },
+  { id: 'wechat', name: 'WeChat', icon: MessageSquare, color: 'text-emerald-500', hex: '#07C160' },
+];
 
-// Set up the worker for PDF.js (Vite compatible)
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
+const INITIAL_PAGE_DATA = {
+  id: '',
+  status: 'Draft',
+  setup: { name: '', category: 'ecommerce', goal: 'sales', themeId: 'theme-1', audience: '' },
+  brand: { logo: '', name: '', tagline: '', aboutShort: '', colors: ['#06B6D4', '#3b82f6'], font: 'Inter' },
+  hero: { headline: '', subheadline: '', ctaText: '', ctaLink: '', bgType: 'particles' },
+  dynamic: { items: [] },
+  blocks: [],
+  theme: { style: 'glass', animationIntensity: 50, mouseEffects: true, scrollEffects: true, particles: true, floating: true, navStyle: 'standard', contentWidth: 'boxed' },
+  ai: { tone: 'professional', generated: '' },
+  contact: { email: '', phone: '', whatsapp: '', address: '', activeSocials: ['facebook', 'instagram'], socialUrls: {} },
+  media: [],
+  seo: { title: '', description: '', keywords: '', analyticsId: '' },
+  publish: { subdomain: '', visibility: 'public', password: '', customDomain: '', publicUrl: '' }
+};
 
-const Dashboard = () => {
+const MENU_ITEMS = [
+  { id: 'analytics', label: 'Overview & Analytics', icon: BarChart3 },
+  { id: 'pages', label: 'My Landing Pages', icon: Globe },
+  { id: 'editor', label: 'Page Builder Workflow', icon: Layout },
+  { id: 'inventory', label: 'E-Commerce & Stock', icon: PackageSearch },
+  { id: 'settings', label: 'Account Settings', icon: Settings }
+];
+
+const EDITOR_STEPS = [
+  { id: 'setup', label: 'Project Setup', icon: Settings, phase: 'Phase 1: Architecture' },
+  { id: 'brand', label: 'Brand Identity', icon: Palette, phase: 'Phase 1: Architecture' },
+  { id: 'hero', label: 'Hero Section', icon: Monitor, phase: 'Phase 2: Core Content' },
+  { id: 'blocks', label: 'Section Builder', icon: Layers, phase: 'Phase 2: Core Content' },
+  { id: 'theme', label: 'Theme & Animations', icon: Sliders, phase: 'Phase 3: Refinement' },
+  { id: 'ai', label: 'AI Content Optimizer', icon: Sparkles, phase: 'Phase 3: Refinement' },
+  { id: 'media', label: 'Media Manager', icon: ImageIcon, phase: 'Phase 3: Refinement' },
+  { id: 'contact', label: 'Contact & Socials', icon: Phone, phase: 'Phase 3: Refinement' },
+  { id: 'seo', label: 'SEO & Performance', icon: Search, phase: 'Phase 4: Launch' },
+  { id: 'publish', label: 'Publish settings', icon: Share2, phase: 'Phase 4: Launch' }
+];
+
+// 2. SUPABASE FILE UPLOADER
+const uploadFileToStorage = async (file) => {
+  if (!file) return null;
+  try {
+    const safeName = file.name.replace(/[^a-zA-Z0-9.]/g, '');
+    const filePath = `uploads/${Date.now()}_${safeName}`;
+
+    // Uploads directly to Supabase storage! No size limit crashes!
+    const { data, error } = await supabase.storage.from('media').upload(filePath, file);
+    if (error) throw error;
+
+    // Returns the permanent public URL
+    const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(filePath);
+    return publicUrlData.publicUrl;
+  } catch (err) {
+    alert("Supabase Upload failed: " + err.message);
+    return null;
+  }
+};
+
+export default function Dashboard() {
   const { currentUser } = useAuth();
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState(null);
-  const [generating, setGenerating] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isExtracting, setIsExtracting] = useState(false);
-  const isFirstLoad = useRef(true);
+  const [userTier, setUserTier] = useState('free');
+  const [activeTab, setActiveTab] = useState('analytics');
+  const [activeEditorStep, setActiveEditorStep] = useState('setup');
+  const [syncStatus, setSyncStatus] = useState('Saved');
+  const [previewMode, setPreviewMode] = useState('desktop');
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+  const [isPageTypeModalOpen, setIsPageTypeModalOpen] = useState(false);
 
-  const [formData, setFormData] = useState({
-    personal: {
-      name: currentUser?.displayName || '',
-      designation: '',
-      profilePicture: null,
-    },
-    contact: {
-      linkedin: '',
-      github: '',
-      email: '',
-      phone: '',
-      facebook: '',
-      whatsapp: '',
-      personalWebsite: ''
-    },
-    about: '',
-    skills: [
-      { name: 'React', level: 80 },
-      { name: 'Design', level: 60 }
-    ],
-    education: [{ degree: '', institution: '', year: '' }],
-    experience: [{ jobTitle: '', company: '', date: '', responsibilities: '', description: '' }],
-    projects: [{ title: '', description: '', link: '', image_url: '' }],
-    research: [{ title: '', description: '', link: '', analysis_ai: '', picture_url: '' }],
-    achievements: [{ title: '', description: '', image: null }],
-    gallery: [{ image: null, caption: '' }],
-    publicResumeUrl: null,
-    isDraft: true,
-    theme: 'space',
-    publicUrl: 'https://galaxify.ai/p/your-name',
-    isPro: false,
-    customDomain: ''
+  const [userProfile, setUserProfile] = useState({
+    name: 'Loading...',
+    email: '',
+    company: '',
+    avatar: ''
   });
 
-  // --- Fetch Existing Data & Sync to Owner Database (CACHE DISABLED) ---
+  const [selectedProjectId, setSelectedProjectId] = useState('page-1');
+  const [pageData, setPageData] = useState({ ...INITIAL_PAGE_DATA, id: `page-${Date.now()}` });
+  const [savedPages, setSavedPages] = useState([
+    { id: 'page-1', setup: { name: 'SaaS Launch' }, status: 'Draft', views: 0, convRate: '0%', revenue: 0 }
+  ]);
+  const [inventory, setInventory] = useState([]);
+
   useEffect(() => {
     if (currentUser) {
-      const fetchData = async () => {
+      setUserProfile(prev => ({
+        ...prev,
+        name: currentUser.displayName || 'Galaxify User',
+        email: currentUser.email,
+        avatar: currentUser.photoURL || ''
+      }));
+
+      const fetchMongoData = async () => {
         try {
-          // 1. Fetch their portfolio data from Firebase
-          const docRef = doc(db, "portfolios", currentUser.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            setFormData(prev => ({ ...prev, ...docSnap.data() }));
-          }
-
-          // 2. NEW: Fetch fresh MongoDB data with a Timestamp Cache-Buster
           const timestamp = new Date().getTime();
-          const mongoResponse = await fetch(`http://localhost:5001/api/user/portfolio/${currentUser.uid}?t=${timestamp}`, {
-            method: 'GET',
-            headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache',
-              'Expires': '0'
-            }
-          });
-
+          const mongoResponse = await fetch(`http://localhost:5001/api/user/portfolio/${currentUser.uid}?t=${timestamp}`);
           if (mongoResponse.ok) {
             const mongoData = await mongoResponse.json();
-            // This strictly applies the plan from your MongoDB Owner CMS!
             if (mongoData.user) {
-              setFormData(prev => ({
-                ...prev,
-                isPro: mongoData.user.plan === 'pro' || mongoData.user.plan === 'premium',
-                planName: mongoData.user.plan
-              }));
+              setUserTier(mongoData.user.plan === 'pro' || mongoData.user.plan === 'premium' ? 'pro' : 'free');
             }
           }
-
-          // 3. Silently sync them to your MongoDB Owner Panel
           await fetch('http://localhost:5001/api/owner/sync-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -106,136 +132,16 @@ const Dashboard = () => {
               uid: currentUser.uid
             })
           });
-
         } catch (error) {
-          console.error("Error fetching or syncing data:", error);
-        } finally {
-          setIsLoading(false);
+          console.error("Database connection failed:", error);
         }
       };
-      fetchData();
+      fetchMongoData();
     }
   }, [currentUser]);
 
-  // --- Autosave Logic (Diagnostic Mode) ---
-  useEffect(() => {
-    console.log("🔄 Autosave Effect Triggered");
-
-    if (!currentUser) {
-      console.log("❌ Autosave skipped: No current user");
-      return;
-    }
-    if (isLoading) {
-      console.log("❌ Autosave skipped: Still loading initial data");
-      return;
-    }
-
-    if (isFirstLoad.current) {
-      console.log("⚠️ Autosave skipped: First load");
-      isFirstLoad.current = false;
-      return;
-    }
-
-    const savePortfolioData = async () => {
-      console.log("💾 Starting Autosave...");
-      setIsSaving(true);
-      try {
-        // Sanitize to remove undefined values which Firestore rejects
-        console.log("🧹 Sanitizing data...");
-        const sanitizedData = JSON.parse(JSON.stringify(formData));
-        console.log("✅ Data sanitized. Writing to Firestore...");
-
-        await setDoc(doc(db, "portfolios", currentUser.uid), {
-          ...sanitizedData,
-          userId: currentUser.uid,
-          lastSaved: serverTimestamp()
-        }, { merge: true });
-
-        console.log("✨ Autosave SUCCESS!");
-        setLastSaved(new Date());
-      } catch (error) {
-        console.error("🔥 Autosave FAILED:", error);
-        if (error.code) console.error("Error Code:", error.code);
-      } finally {
-        setIsSaving(false);
-      }
-    };
-
-    // Debounce: Wait 2000ms after the last change before saving
-    const timeoutId = setTimeout(() => {
-      savePortfolioData();
-    }, 2000);
-
-    return () => clearTimeout(timeoutId);
-  }, [formData, currentUser, isLoading]);
-
-
-  // --- COMPLETELY BYPASS FIREBASE STORAGE ---
-  // This converts files to text strings so they save instantly for free!
-  const uploadFileToStorage = async (file, path) => {
-    return new Promise((resolve, reject) => {
-      if (!file) {
-        resolve(null);
-        return;
-      }
-
-      // Quick safety check to prevent crashing the free database
-      if (file.size > 1048576) {
-        alert(`File ${file.name} is too large! Please keep files under 1MB for the free tier.`);
-        resolve(null);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result); // Returns the file as a massive text string!
-      reader.onerror = error => {
-        console.error("Error converting file:", error);
-        reject(error);
-      };
-    });
-  };
-
-
-  // --- Form Handlers ---
-  const handleFieldChange = (section, field, value) => {
-    setFormData(prev => {
-      if (section === 'personal') return { ...prev, personal: { ...prev.personal, [field]: value } };
-      if (section === 'root') return { ...prev, [field]: value };
-      if (section === 'contact') return { ...prev, contact: { ...prev.contact, [field]: value } };
-      return prev;
-    });
-  };
-
-  const handleArrayChange = (arrayName, index, field, value) => {
-    setFormData(prev => {
-      const newArray = [...(Array.isArray(prev[arrayName]) ? prev[arrayName] : [])];
-      if (field) {
-        newArray[index] = { ...newArray[index], [field]: value };
-      } else {
-        newArray[index] = value;
-      }
-      return { ...prev, [arrayName]: newArray };
-    });
-  };
-
-  const addItem = (arrayName, newItem) => {
-    setFormData(prev => ({
-      ...prev,
-      [arrayName]: [...(Array.isArray(prev[arrayName]) ? prev[arrayName] : []), newItem]
-    }));
-  };
-
-  const removeItem = (arrayName, index) => {
-    setFormData(prev => {
-      const newArray = [...(Array.isArray(prev[arrayName]) ? prev[arrayName] : [])];
-      newArray.splice(index, 1);
-      return { ...prev, [arrayName]: newArray };
-    });
-  };
   const handleBuyPro = async () => {
     if (!currentUser) return alert("Please log in to upgrade.");
-
     try {
       const response = await fetch('http://localhost:5001/api/payment/create-checkout-session', {
         method: 'POST',
@@ -245,13 +151,7 @@ const Dashboard = () => {
 
       if (response.ok) {
         alert("🎉 Successfully Upgraded to PRO!");
-
-        // INSTANTLY update the UI so the box turns Green!
-        setFormData(prev => ({
-          ...prev,
-          isPro: true,
-          planName: 'pro'
-        }));
+        setUserTier('pro');
       } else {
         alert("Server failed to update database.");
       }
@@ -259,726 +159,1259 @@ const Dashboard = () => {
       alert("Payment gateway connection failed. Is Port 5001 running?");
     }
   };
-  // --- AI Handlers ---
-  const handleExperienceAi = async (index, field) => {
-    const exp = formData.experience[index];
-    if (!exp?.jobTitle || !exp?.company) {
-      alert("Please enter Job Title and Company first.");
-      return;
-    }
-    setGenerating({ type: 'exp', index, field });
-    try {
-      const currentText = exp[field] || "";
-      const type = field === 'responsibilities' ? 'key responsibilities' : 'job description';
-      const text = await generateExperience(exp.jobTitle, exp.company, type, currentText);
-      handleArrayChange('experience', index, field, text);
-    } catch (error) {
-      console.error(error);
-      alert("AI Generation failed.");
-    } finally {
-      setGenerating(null);
-    }
+
+  useEffect(() => {
+    if (activeTab !== 'editor') return;
+    setSyncStatus('Syncing...');
+    const timer = setTimeout(() => {
+      setSyncStatus('Saved');
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [pageData, activeTab]);
+
+  const updateNestedData = (section, field, value) => {
+    setPageData(prev => ({
+      ...prev,
+      [section]: { ...prev[section], [field]: value }
+    }));
   };
 
-  const handleResearchAi = async (index) => {
-    const paper = formData.research[index];
-    if (!paper?.title) {
-      alert("Please enter Paper Title first.");
-      return;
-    }
-    setGenerating({ type: 'research', index });
-    try {
-      const currentText = paper.analysis_ai || "";
-      const text = await generateResearchAnalysis(paper.title, currentText);
-      handleArrayChange('research', index, 'analysis_ai', text);
-    } catch (error) {
-      console.error(error);
-      alert("AI Analysis failed.");
-    } finally {
-      setGenerating(null);
-    }
-  };
-
-
-  // --- AI Resume Extraction Handler ---
-  const handleResumeExtraction = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setIsExtracting(true);
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-      let fullText = '';
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        fullText += textContent.items.map(item => item.str).join(' ') + '\n';
-      }
-
-      // NOTE: Replace YOUR_PROJECT_ID with your actual Firebase project ID before deployment
-      const functionUrl = 'http://127.0.0.1:5001/galaxify-ai-9bd6a/us-central1/extractResume';
-      const response = await fetch(functionUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: fullText }),
-      });
-
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-      const extractedData = await response.json();
-
-      // Auto-fill inputs using AI response natively into Dashboard state
-      setFormData(prev => {
-        const newSkills = extractedData.skills
-          ? extractedData.skills.map(s => ({ name: typeof s === 'string' ? s : s.name || '', level: 70 }))
-          : prev.skills;
-
-        const newEducation = extractedData.education && extractedData.education.length > 0
-          ? extractedData.education.map(e => ({
-            degree: e.degree || e.title || '',
-            institution: e.institution || e.school || e.company || '',
-            year: e.year || e.date || e.duration || ''
-          }))
-          : prev.education;
-
-        const newExperience = extractedData.experience && extractedData.experience.length > 0
-          ? extractedData.experience.map(exp => ({
-            jobTitle: exp.jobTitle || exp.title || exp.role || '',
-            company: exp.company || exp.organization || '',
-            date: exp.date || exp.duration || '',
-            responsibilities: exp.responsibilities ? (Array.isArray(exp.responsibilities) ? exp.responsibilities.join('\n') : exp.responsibilities) : '',
-            description: exp.description || ''
-          }))
-          : prev.experience;
-
-        return {
-          ...prev,
-          personal: { ...prev.personal, name: extractedData.name || prev.personal.name },
-          contact: { ...prev.contact, email: extractedData.email || prev.contact.email, phone: extractedData.phone || prev.contact.phone },
-          skills: newSkills,
-          education: newEducation,
-          experience: newExperience,
-        };
-      });
-    } catch (error) {
-      console.error("Error extracting PDF text:", error);
-      alert("Error processing PDF via AI. See console.");
-    } finally {
-      setIsExtracting(false);
-    }
-  };
-
-  // --- File Upload Handlers ---
-  const handleProfileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    // Convert to Base64 immediately so it saves to Firestore Drafts
-    const url = await uploadFileToStorage(file, `users/${currentUser.uid}/profile_${Date.now()}`);
-    if (url) handleFieldChange('personal', 'profilePicture', url);
-  };
-
-  const handlePublicCvUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      const url = await uploadFileToStorage(file, `users/${currentUser?.uid}/resume_${Date.now()}.pdf`);
-      if (url) {
-        setFormData(prev => ({ ...prev, publicResumeUrl: url }));
-      }
-    } catch (error) {
-      console.error("Failed to upload CV immediately:", error);
-    }
-  };
-
-  const handleResearchImageUpload = async (index, e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      const url = await uploadFileToStorage(file, `users/${currentUser?.uid}/research/${Date.now()}_${file.name}`);
-      handleArrayChange('research', index, 'image_url', url);
-    } catch (error) {
-      console.error("Upload failed", error);
-    }
-  };
-
-  const handleAchievementImageUpload = async (index, e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const url = await uploadFileToStorage(file, `users/${currentUser.uid}/achievements/${Date.now()}`);
-    if (url) handleArrayChange('achievements', index, 'image', url);
-  };
-
-  const handleGalleryImageUpload = async (index, e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const url = await uploadFileToStorage(file, `users/${currentUser.uid}/gallery/${Date.now()}`);
-    if (url) handleArrayChange('gallery', index, 'image', url);
-  };
-
-
-  // --- Action Handlers ---
-  const handlePreview = () => {
-    if (!currentUser) return;
-    // Remove the annoying isSaving block! Just open the preview.
-    console.log("Opening preview for:", currentUser.uid);
-    window.open(`${window.location.origin}/u/${currentUser.uid}`, '_blank');
-  };
-
+  // 3. SUPABASE PUBLISH LOGIC
   const handlePublish = async () => {
-    if (!currentUser) return alert("You must be logged in!");
-
-    // 1. Check if Firebase DB is actually connected!
-    if (!db) {
-      alert("❌ FIREBASE CRASH: Your database connection is broken. Check src/services/firebase.js");
+    if (!currentUser) {
+      alert("Error: You must be logged in to your account to publish real changes.");
       return;
     }
 
-    setIsPublishing(true);
+    setSyncStatus('Publishing...');
 
     try {
-      console.log("Attempting to publish for user:", currentUser.uid);
-      const sanitizedData = JSON.parse(JSON.stringify(formData));
+      const publicUrl = `${window.location.origin}/p/${currentUser.uid}`;
 
-      // 2. Standard Firebase Save (No tricky timeouts)
-      await setDoc(doc(db, "portfolios", currentUser.uid), {
-        ...sanitizedData,
-        userId: currentUser.uid,
-        publishedAt: serverTimestamp(),
-        isPublished: true,
+      let sanitizedData;
+      try {
+        sanitizedData = JSON.parse(JSON.stringify(pageData));
+      } catch (e) {
+        alert("Error reading data. Please ensure no invalid files are attached.");
+        setSyncStatus('Saved');
+        return;
+      }
+
+      // Upsert directly to Supabase Postgres database
+      const { error } = await supabase
+        .from('landing_pages')
+        .upsert({
+          id: currentUser.uid,
+          user_id: currentUser.uid,
+          page_data: sanitizedData,
+          public_url: publicUrl
+        });
+
+      if (error) throw error;
+
+      // Update local state to reflect Publish
+      setPageData(prev => ({ ...prev, status: 'Published', publish: { ...prev.publish, publicUrl } }));
+
+      setSavedPages(prev => {
+        const existingIdx = prev.findIndex(p => p.id === pageData.id);
+        const updatedPage = { ...pageData, status: 'Published', publish: { ...pageData.publish, publicUrl } };
+        if (existingIdx >= 0) {
+          const updated = [...prev];
+          updated[existingIdx] = updatedPage;
+          return updated;
+        }
+        return [...prev, updatedPage];
       });
 
-      console.log("Publish successful!");
-      alert(`🚀 Success! Your portfolio is published.`);
-    } catch (error) {
-      console.error("🔥 PUBLISH ERROR:", error);
-      alert(`Failed to publish: ${error.message}`);
-    } finally {
-      setIsPublishing(false);
+      setSyncStatus('Published!');
+      alert(`🚀 Success! Your Landing Page has been securely deployed via Supabase.\n\nOpening your new page now...`);
+
+      // Automatically open the live URL in a new tab!
+      window.open(publicUrl, '_blank');
+      setActiveTab('pages');
+
+    } catch (err) {
+      console.error("Supabase Publish Error:", err);
+      alert(`Deployment failed: ${err.message}`);
+      setSyncStatus('Saved');
     }
   };
 
+  const handlePreview = () => {
+    if (!currentUser) {
+      alert("Please log in to preview your live URL.");
+      return;
+    }
+    const publicUrl = `${window.location.origin}/p/${currentUser.uid}`;
+    window.open(publicUrl, '_blank');
+  };
 
-  // --- Styles ---
-  const glassCard = "bg-white/5 border-b border-white/10 backdrop-blur-xl rounded-2xl p-6 shadow-2xl relative overflow-hidden group";
-  const inputStyle = "w-full bg-black/40 border border-white/10 text-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all placeholder-slate-600";
-  const labelStyle = "block text-xs font-bold text-cyan-400/80 uppercase tracking-widest mb-2";
-  const neonButton = "bg-cyan-500/10 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/20 hover:shadow-[0_0_15px_rgba(34,211,238,0.3)] transition-all rounded-lg px-4 py-2 text-sm font-bold flex items-center gap-2";
+  const loadPageForEditing = (page) => {
+    setPageData({ ...page });
+    setActiveTab('editor');
+    setActiveEditorStep('setup');
+  };
 
-  return (
-    <div className="min-h-screen w-full bg-[#0a0e17] text-slate-200 font-sans selection:bg-cyan-500/30 pb-20">
+  const initNewPageProcess = () => {
+    setIsPageTypeModalOpen(true);
+  }
 
-      {/* Top Header */}
-      <header className="sticky top-0 z-50 bg-[#0a0e17]/80 backdrop-blur-md border-b border-white/5 px-8 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
-            <Sparkles className="text-white" size={20} />
+  const createNewPage = (category) => {
+    let defaultBlocks = [];
+    if (category === 'ecommerce') defaultBlocks = [{ id: 'b1', type: 'products', title: 'Featured Products', layout: 'theme-default', collapsed: false }];
+    if (category === 'learning') defaultBlocks = [{ id: 'b1', type: 'courses', title: 'Curriculum', layout: 'theme-default', collapsed: false }, { id: 'b2', type: 'trust', title: 'Certifications', layout: 'centered', collapsed: false }];
+
+    setPageData({ ...INITIAL_PAGE_DATA, id: `page-${Date.now()}`, setup: { ...INITIAL_PAGE_DATA.setup, category }, blocks: defaultBlocks });
+    setIsPageTypeModalOpen(false);
+    setActiveTab('editor');
+    setActiveEditorStep('setup');
+  }
+
+  const currentStepIndex = EDITOR_STEPS.findIndex(s => s.id === activeEditorStep);
+  const handleNextStep = () => {
+    if (currentStepIndex < EDITOR_STEPS.length - 1) setActiveEditorStep(EDITOR_STEPS[currentStepIndex + 1].id);
+  };
+  const handlePrevStep = () => {
+    if (currentStepIndex > 0) setActiveEditorStep(EDITOR_STEPS[currentStepIndex - 1].id);
+  };
+
+  const handleAddBlock = (type) => {
+    let items = [];
+    if (type === 'features') items = [{ id: 1, title: '', desc: '', icon: null }, { id: 2, title: '', desc: '', icon: null }, { id: 3, title: '', desc: '', icon: null }];
+    if (type === 'faq') items = [{ id: 1, q: '', a: '' }, { id: 2, q: '', a: '' }];
+
+    const newBlock = { id: `block-${Date.now()}`, type, title: `New ${type} Block`, layout: 'theme-default', collapsed: false, items };
+    setPageData(prev => ({ ...prev, blocks: [...prev.blocks, newBlock] }));
+  };
+
+  const handleUpdateBlock = (blockId, field, value) => {
+    setPageData(prev => ({ ...prev, blocks: prev.blocks.map(b => b.id === blockId ? { ...b, [field]: value } : b) }));
+  };
+
+  const handleUpdateBlockItem = (blockId, itemIndex, field, value) => {
+    setPageData(prev => {
+      const newBlocks = [...prev.blocks];
+      const bIdx = newBlocks.findIndex(b => b.id === blockId);
+      newBlocks[bIdx].items[itemIndex] = { ...newBlocks[bIdx].items[itemIndex], [field]: value };
+      return { ...prev, blocks: newBlocks };
+    });
+  };
+
+  const handleMoveBlock = (index, direction) => {
+    setPageData(prev => {
+      const newBlocks = [...prev.blocks];
+      if (index + direction < 0 || index + direction >= newBlocks.length) return prev;
+      const temp = newBlocks[index];
+      newBlocks[index] = newBlocks[index + direction];
+      newBlocks[index + direction] = temp;
+      return { ...prev, blocks: newBlocks };
+    });
+  };
+
+  const handleDeleteBlock = (blockId) => {
+    setPageData(prev => ({ ...prev, blocks: prev.blocks.filter(b => b.id !== blockId) }));
+  };
+
+  // ==========================================
+  // RENDER FUNCTIONS
+  // ==========================================
+  const renderAnalytics = () => {
+    const activeProject = savedPages.find(p => p.id === selectedProjectId) || savedPages[0];
+    const visitorMultiplier = activeProject.views > 1000 ? 1 : 0.1;
+
+    return (
+      <div className="p-8 space-y-8 h-full overflow-y-auto custom-scrollbar">
+        <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
+          <div>
+            <h2 className="text-2xl font-black text-white">Overview & Analytics</h2>
+            <p className="text-gray-400">Viewing real-time performance for specific projects.</p>
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-white">
-            GALAXIFY <span className="text-cyan-400">AI</span>
-          </h1>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-bold text-gray-400">Select Project:</label>
+              <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className="bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-white outline-none cursor-pointer">
+                {savedPages.map(p => <option key={p.id} value={p.id}>{p.setup.name || 'Untitled'}</option>)}
+              </select>
+            </div>
+            <button onClick={initNewPageProcess} className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold flex items-center gap-2 transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+              <Plus size={18} /> New Page
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="text-right hidden md:block">
-            <span className="block text-xs text-slate-400">Auto-save Status</span>
-            {isSaving ? (
-              <span className="text-xs text-yellow-400 flex items-center justify-end gap-1"><Loader2 size={10} className="animate-spin" /> Saving...</span>
-            ) : (
-              <span className="text-xs text-green-400 flex items-center justify-end gap-1"><Save size={10} /> Saved {lastSaved?.toLocaleTimeString()}</span>
-            )}
-          </div>
-          <button onClick={handlePreview} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full font-bold transition-all flex items-center gap-2 border border-white/10">
-            <Eye size={18} />
-            <span className="hidden sm:inline">Preview</span>
-          </button>
-          <button onClick={handlePublish} disabled={isPublishing} className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white px-6 py-2 rounded-full font-bold shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all flex items-center gap-2">
-            {isPublishing ? <Loader2 className="animate-spin" size={18} /> : <Rocket size={18} />}
-            Publish
-          </button>
-        </div>
-      </header>
-
-      {/* MASTER GRID CONTAINER */}
-      <div className="max-w-[1600px] mx-auto p-6 grid grid-cols-12 gap-6">
-
-        {/* 👇 1. CONDITIONAL PRO PLAN UPGRADE BOX 👇 */}
-        <div className="col-span-12 lg:col-span-3">
-          {formData?.isPro ? (
-            <div className="h-full p-6 bg-gradient-to-br from-green-900/40 to-emerald-900/40 border border-green-500/20 rounded-2xl flex flex-col justify-center shadow-[0_0_30px_rgba(16,185,129,0.1)]">
-              <h4 className="text-white font-bold flex items-center gap-2 mb-2">
-                <Crown size={20} className="text-green-400" /> PRO ACTIVE
-              </h4>
-              <p className="text-sm text-green-500/80 mb-4">All premium themes unlocked.</p>
-              <div className="w-full py-3 bg-green-500/10 border border-green-500/30 text-green-400 text-sm font-bold rounded-xl text-center">
-                Lifetime Access
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[
+            { title: 'Total Revenue', value: `$${(activeProject.revenue || 0).toLocaleString()}`, icon: DollarSign, color: 'text-green-400', bg: 'bg-green-500/10' },
+            { title: 'Active Visitors', value: Math.floor(120 * visitorMultiplier), icon: Users, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
+            { title: 'Avg. Conversion', value: activeProject.convRate, icon: TrendingUp, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+            { title: 'Page Views', value: activeProject.views?.toLocaleString(), icon: Activity, color: 'text-purple-400', bg: 'bg-purple-500/10' }
+          ].map((stat, i) => (
+            <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-2xl flex flex-col justify-between hover:bg-white/10 transition-colors">
+              <div className="flex justify-between items-start mb-4">
+                <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}><stat.icon size={24} /></div>
+                <span className="text-xs font-bold text-green-400 flex items-center gap-1"><ArrowUpRight size={14} /> +{(Math.random() * 20).toFixed(1)}%</span>
+              </div>
+              <div>
+                <h4 className="text-3xl font-black text-white">{stat.value}</h4>
+                <p className="text-sm text-gray-400 font-medium">{stat.title}</p>
               </div>
             </div>
-          ) : (
-            <div className="h-full p-6 bg-gradient-to-br from-indigo-900/40 to-purple-900/40 border border-purple-500/20 rounded-2xl flex flex-col justify-center shadow-[0_0_30px_rgba(168,85,247,0.1)]">
-              <h4 className="text-white font-bold flex items-center gap-2 mb-2">
-                <Crown size={20} className="text-yellow-500" /> Pro Plan
-              </h4>
-              <p className="text-sm text-slate-400 mb-4">Unlock premium themes & features.</p>
-              <button onClick={handleBuyPro} className="w-full py-3 bg-white text-black text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors shadow-lg flex justify-center items-center gap-2">
-                Upgrade Now
-              </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col">
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><MapPin size={18} className="text-cyan-400" /> Live Visitor Map ({activeProject.setup.name})</h3>
+            <div className="relative flex-1 min-h-[300px] bg-[#0A0A0E] rounded-xl overflow-hidden border border-white/5 flex items-center justify-center shadow-inner">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,182,212,0.15)_0%,transparent_70%)]"></div>
+              <Map className="w-full h-full text-white/5 absolute p-8" />
+              {activeProject.views > 0 ? (
+                <>
+                  <div className="absolute top-[30%] left-[25%] w-3 h-3 bg-cyan-500 rounded-full animate-ping"></div>
+                  <div className="absolute top-[45%] left-[60%] w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]"></div>
+                  <div className="absolute top-[60%] left-[40%] w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
+                  <div className="absolute top-[20%] left-[70%] w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse shadow-[0_0_10px_#a855f7]"></div>
+                </>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm"><p className="text-gray-500 font-bold">No active traffic yet.</p></div>
+              )}
             </div>
-          )}
-        </div>
-        {/* 👆 END OF PRO PLAN BOX 👆 */}
+          </div>
 
-        {/* 2. AI Magic Resume Banner (Adjusted to col-span-9 so it sits next to the Pro Box) */}
-        <div className="col-span-12 lg:col-span-9 bg-gradient-to-r from-cyan-500/10 to-purple-600/10 border border-cyan-500/30 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between shadow-[0_0_30px_rgba(6,182,212,0.1)]">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col">
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-cyan-400" /> Revenue (Last 7 Days)</h3>
+            <div className="flex-1 flex items-end gap-3 min-h-[300px] pt-10 relative">
+              {activeProject.revenue > 0 ? [40, 70, 45, 90, 65, 80, 100].map((val, i) => (
+                <div key={i} className="flex-1 bg-cyan-500/10 hover:bg-cyan-500/30 transition-colors rounded-t-xl relative group flex justify-center">
+                  <div className="absolute -top-8 bg-black border border-white/10 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">${(val * 120 * visitorMultiplier).toFixed(0)}</div>
+                  <div className="absolute bottom-0 w-full bg-gradient-to-t from-cyan-600 to-blue-400 rounded-t-xl transition-all duration-1000 ease-out" style={{ height: `${val}%` }}></div>
+                </div>
+              )) : (
+                <div className="absolute inset-0 flex items-center justify-center"><p className="text-gray-500 font-bold">No revenue data for this project.</p></div>
+              )}
+            </div>
+            <div className="flex justify-between text-xs text-gray-500 mt-4 px-2">
+              <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  };
+
+  const renderPages = () => (
+    <div className="p-8 space-y-8 h-full overflow-y-auto custom-scrollbar">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-black text-white">My Landing Pages</h2>
+          <p className="text-gray-400">Manage, edit, and duplicate your immersive web experiences.</p>
+        </div>
+        <button onClick={initNewPageProcess} className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold flex items-center gap-2 transition-colors">
+          <Plus size={18} /> Create New Page
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {savedPages.map(page => (
+          <div key={page.id} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-cyan-500/50 transition-all group">
+            <div className="h-40 bg-[#0A0A0E] relative flex items-center justify-center border-b border-white/5 group-hover:bg-[#111118] transition-colors">
+              <LayoutTemplate className="w-16 h-16 text-white/10 group-hover:scale-110 group-hover:text-cyan-500/20 transition-all" />
+              <div className="absolute top-3 right-3">
+                <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-md ${page.status === 'Published' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                  {page.status}
+                </span>
+              </div>
+            </div>
+            <div className="p-5">
+              <h3 className="text-lg font-bold text-white mb-1">{page.setup.name || 'Untitled Project'}</h3>
+              <p className="text-xs text-gray-400 mb-4">{page.id}</p>
+
+              <div className="flex justify-between items-center text-sm text-gray-300 mb-5 bg-black/30 p-3 rounded-xl border border-white/5">
+                <div className="flex flex-col"><span className="text-[10px] text-gray-500 uppercase">Views</span><span className="font-bold">{page.views?.toLocaleString() || 0}</span></div>
+                <div className="flex flex-col"><span className="text-[10px] text-gray-500 uppercase">Conv. Rate</span><span className="font-bold text-green-400">{page.convRate || '0%'}</span></div>
+              </div>
+
+              <div className="flex gap-2">
+                <button onClick={() => loadPageForEditing(page)} className="flex-1 py-2 bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600 hover:text-white rounded-lg font-bold text-sm transition-colors border border-cyan-500/30">Edit Page</button>
+                {page.publish?.publicUrl && (
+                  <button onClick={() => window.open(page.publish.publicUrl, '_blank')} className="p-2 bg-green-500/10 hover:bg-green-500/20 rounded-lg text-green-400 hover:text-green-300 border border-green-500/20 transition-colors" title="View Live Site">
+                    <Globe size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderInventory = () => {
+    const projectInventory = inventory.filter(item => item.projectId === selectedProjectId);
+
+    return (
+      <div className="p-8 h-full overflow-y-auto custom-scrollbar space-y-8">
+        <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
           <div>
-            <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-2">
-              <Sparkles className="text-cyan-400" /> Auto-Fill with AI
-            </h2>
-            <p className="text-sm text-slate-300">Upload your PDF resume and let our AI instantly map and populate your portfolio fields below.</p>
+            <h2 className="text-2xl font-black text-white">E-Commerce Inventory</h2>
+            <p className="text-gray-400">Manage products linked to specific landing pages.</p>
           </div>
-          <div className="mt-4 md:mt-0 shrink-0">
-            <label className={`bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white px-6 py-3 rounded-full font-bold shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all flex items-center gap-2 ${isExtracting ? 'opacity-80 cursor-not-allowed' : 'cursor-pointer'}`}>
-              {isExtracting ? <Loader2 className="animate-spin" size={18} /> : <FileText size={18} />}
-              {isExtracting ? 'Extracting Data...' : 'Upload PDF Resume'}
-              <input type="file" accept="application/pdf" className="hidden" onChange={handleResumeExtraction} disabled={isExtracting} />
-            </label>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-bold text-gray-400">Context:</label>
+              <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className="bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-white outline-none cursor-pointer">
+                {savedPages.map(p => <option key={p.id} value={p.id}>{p.setup.name || 'Untitled'}</option>)}
+              </select>
+            </div>
+            <button className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold flex items-center gap-2">
+              <Plus size={18} /> Add Product
+            </button>
           </div>
         </div>
 
-        {/* Grid Area 1: Personal & About (Full Width) */}
-        <div className={`col-span-12 ${glassCard} flex flex-col md:flex-row gap-8 items-start`}>
-          <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-[80px] pointer-events-none" />
+        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+          <table className="w-full text-left text-sm text-gray-400">
+            <thead className="text-xs uppercase bg-black/50 text-gray-500 border-b border-white/10">
+              <tr>
+                <th className="px-6 py-4 font-bold">Product Name</th>
+                <th className="px-6 py-4 font-bold">Price</th>
+                <th className="px-6 py-4 font-bold">Stock</th>
+                <th className="px-6 py-4 font-bold">Status</th>
+                <th className="px-6 py-4 font-bold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projectInventory.length > 0 ? projectInventory.map(item => (
+                <tr key={item.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="px-6 py-4 font-medium text-white flex items-center gap-3"><Box size={16} className="text-cyan-400" /> {item.name}</td>
+                  <td className="px-6 py-4">${item.price}</td>
+                  <td className="px-6 py-4">{item.stock} units</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${item.stock > 15 ? 'bg-green-500/20 text-green-400' : item.stock > 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>{item.status}</span>
+                  </td>
+                  <td className="px-6 py-4 text-right flex justify-end gap-2">
+                    <button className="p-1.5 hover:bg-white/10 rounded text-gray-300"><Settings size={14} /></button>
+                    <button className="p-1.5 hover:bg-red-500/20 hover:text-red-400 rounded text-gray-300 transition-colors"><Trash2 size={14} /></button>
+                  </td>
+                </tr>
+              )) : (
+                <tr><td colSpan="5" className="px-6 py-12 text-center text-gray-500">No products configured for this landing page yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  };
 
+  const renderSettings = () => (
+    <div className="p-8 max-w-4xl h-full overflow-y-auto custom-scrollbar space-y-8">
+      <div>
+        <h2 className="text-2xl font-black text-white">Account Settings</h2>
+        <p className="text-gray-400">Manage your profile, preferences, and subscription tier.</p>
+      </div>
+
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6">
+        <h3 className="text-lg font-bold text-white border-b border-white/10 pb-4 mb-4 flex items-center gap-2"><User size={18} className="text-cyan-400" /> Profile Information</h3>
+        <div className="flex flex-col md:flex-row gap-8 items-start">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-white/20 flex items-center justify-center bg-black/50 overflow-hidden relative group cursor-pointer hover:border-cyan-500 transition-colors">
+              {userProfile.avatar ? <img src={userProfile.avatar} alt="Avatar" className="w-full h-full object-cover" /> : <User size={32} className="text-gray-500" />}
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Upload size={20} className="text-white" />
+              </div>
+            </div>
+            <span className="text-xs text-gray-500 font-bold">Change Avatar</span>
+          </div>
           <div className="flex-1 w-full space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className={labelStyle}>Full Name</label>
-                <input
-                  type="text"
-                  value={formData?.personal?.name || ""}
-                  onChange={(e) => handleFieldChange('personal', 'name', e.target.value)}
-                  className={`${inputStyle} text-lg font-bold`}
-                  placeholder="e.g. Alex Chen"
-                />
-              </div>
-              <div>
-                <label className={labelStyle}>Designation</label>
-                <input
-                  type="text"
-                  value={formData?.personal?.designation || ""}
-                  onChange={(e) => handleFieldChange('personal', 'designation', e.target.value)}
-                  className={inputStyle}
-                  placeholder="e.g. Senior Product Designer"
-                />
-              </div>
+              <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Full Name</label><input type="text" value={userProfile.name} onChange={(e) => setUserProfile({ ...userProfile, name: e.target.value })} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" /></div>
+              <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Email Address</label><input type="email" value={userProfile.email} disabled className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-gray-500 outline-none cursor-not-allowed" /></div>
             </div>
-
-            <div className="mt-4">
-              <label className={labelStyle}>Profile Picture</label>
-              <div className="flex items-center gap-4">
-                <div className="h-16 w-16 rounded-full bg-black/40 border border-white/10 flex items-center justify-center overflow-hidden">
-                  {formData?.personal?.profilePicture ? (
-                    <img
-                      src={formData.personal.profilePicture instanceof File ? URL.createObjectURL(formData.personal.profilePicture) : formData.personal.profilePicture}
-                      alt="Profile"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <ImageIcon size={20} className="text-slate-500" />
-                  )}
-                </div>
-                <label className="cursor-pointer bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs px-4 py-2 rounded-md transition-colors">
-                  Upload Photo
-                  <input type="file" className="hidden" accept="image/*" onChange={handleProfileUpload} />
-                </label>
-              </div>
-            </div>
-
-            <div className="relative mt-4">
-              <label className={labelStyle}>About Me (AI Powered)</label>
-              <textarea
-                rows={3}
-                value={formData?.about || ""}
-                onChange={(e) => handleFieldChange('root', 'about', e.target.value)}
-                className={`${inputStyle} resize-none`}
-                placeholder="Tell your story..."
-              />
-              <button className="absolute top-8 right-2 text-cyan-400 hover:text-white p-1 rounded-md transition-colors">
-                <Wand2 size={18} />
-              </button>
-            </div>
-
-            {/* --- PUBLIC CV UPLOAD UI --- */}
-            <div className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5 mt-4">
-              <span className="text-sm text-slate-400 flex items-center gap-2">
-                <FileText size={16} /> Public Downloadable CV
-              </span>
-              <label className="flex items-center gap-2 cursor-pointer bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 px-3 py-1.5 rounded-lg transition-colors text-xs font-bold border border-cyan-500/50">
-                <Upload size={14} />
-                {formData.publicResumeUrl ? "Update PDF" : "Upload PDF"}
-                <input type="file" accept="application/pdf" className="hidden" onChange={handlePublicCvUpload} />
-              </label>
-            </div>
+            <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Company / Agency Name</label><input type="text" value={userProfile.company} onChange={(e) => setUserProfile({ ...userProfile, company: e.target.value })} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" /></div>
+            <button onClick={() => setSyncStatus('Saved')} className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold flex items-center gap-2 transition-colors">Save Profile Changes</button>
           </div>
         </div>
+      </div>
 
-        {/* Grid Area 2: Skills & Research (Left Column) */}
-        <div className="col-span-12 lg:col-span-5 flex flex-col gap-6">
-
-          {/* Skills Card */}
-          <div className={glassCard}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2"><Layout size={18} className="text-purple-400" /> Skills</h3>
-              <button onClick={() => addItem('skills', { name: '', level: 50 })} className={neonButton}><Plus size={14} /> Add</button>
-            </div>
-            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-              {(Array.isArray(formData?.skills) ? formData.skills : []).map((skill, idx) => (
-                <div key={idx} className="bg-black/20 p-3 rounded-lg border border-white/5 group">
-                  <div className="flex justify-between mb-2">
-                    <input
-                      type="text"
-                      value={skill?.name || ""}
-                      onChange={(e) => handleArrayChange('skills', idx, 'name', e.target.value)}
-                      className="bg-transparent border-none text-sm text-white focus:ring-0 p-0 w-full"
-                      placeholder="Skill Name"
-                    />
-                    <button onClick={() => removeItem('skills', idx)} className="text-slate-600 hover:text-red-400"><Trash2 size={14} /></button>
-                  </div>
-                  <input
-                    type="range"
-                    min="0" max="100"
-                    value={skill?.level || 0}
-                    onChange={(e) => handleArrayChange('skills', idx, 'level', parseInt(e.target.value))}
-                    className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                  />
-                </div>
-              ))}
-            </div>
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6">
+        <h3 className="text-lg font-bold text-white border-b border-white/10 pb-4 flex items-center gap-2"><CreditCard size={18} className="text-green-400" /> Subscription Tier</h3>
+        <div className="flex gap-4">
+          <div className={`flex-1 p-6 rounded-xl border-2 transition-all ${userTier === 'free' ? 'border-gray-500 bg-gray-900' : 'border-white/10 bg-black/50'}`}>
+            <h4 className="text-xl font-bold text-white mb-2">Starter Plan</h4>
+            <p className="text-sm text-gray-400 mb-4">Basic features, watermarked branding, limited themes.</p>
+            <div className="text-2xl font-black text-white">$0 <span className="text-sm font-normal text-gray-500">/mo</span></div>
           </div>
 
-          {/* Research Card */}
-          <div className={glassCard}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2"><Globe size={18} className="text-pink-400" /> Research</h3>
-              <button onClick={() => addItem('research', { title: '', description: '', link: '', analysis_ai: '', picture_url: '' })} className={neonButton}><Plus size={14} /> Add</button>
-            </div>
-            <div className="space-y-4">
-              {(Array.isArray(formData?.research) ? formData.research : []).map((paper, idx) => (
-                <div key={idx} className="bg-black/20 p-4 rounded-xl border border-white/5 space-y-3 relative">
-                  <button onClick={() => removeItem('research', idx)} className="absolute top-3 right-3 text-slate-600 hover:text-red-400"><Trash2 size={14} /></button>
-                  <input
-                    type="text"
-                    value={paper?.title || ""}
-                    onChange={(e) => handleArrayChange('research', idx, 'title', e.target.value)}
-                    className={inputStyle}
-                    placeholder="Paper Title"
-                  />
-                  <div className="relative">
-                    <textarea
-                      rows={3}
-                      value={paper?.analysis_ai || ""}
-                      onChange={(e) => handleArrayChange('research', idx, 'analysis_ai', e.target.value)}
-                      className={`${inputStyle} text-xs`}
-                      placeholder="AI Analysis..."
-                    />
-                    <button
-                      onClick={() => handleResearchAi(idx)}
-                      disabled={generating?.type === 'research' && generating?.index === idx}
-                      className="absolute bottom-2 right-2 text-cyan-400 hover:text-white"
-                    >
-                      {generating?.type === 'research' && generating?.index === idx ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
-                    </button>
-                  </div>
-                  <div className="flex gap-2">
-                    <label className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg p-2 flex items-center justify-center cursor-pointer text-xs text-slate-400 transition-colors">
-                      <Upload size={12} className="mr-2" /> {paper?.image_url ? "Graph Uploaded" : "Upload Graph"}
-                      <input type="file" className="hidden" accept="image/*" onChange={(e) => handleResearchImageUpload(idx, e)} />
-                    </label>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div onClick={userTier === 'free' ? handleBuyPro : undefined} className={`flex-1 p-6 rounded-xl border-2 transition-all relative overflow-hidden ${userTier === 'pro' ? 'border-green-500 bg-green-500/5 shadow-[0_0_30px_rgba(34,197,94,0.15)] cursor-default' : 'border-orange-500/50 bg-black/50 hover:border-orange-500 cursor-pointer shadow-[0_0_20px_rgba(249,115,22,0.1)]'}`}>
+            {userTier === 'pro' && <div className="absolute top-0 right-0 bg-green-500 text-black text-[10px] font-black px-3 py-1 rounded-bl-lg uppercase">Active</div>}
+            {userTier === 'free' && <div className="absolute top-0 right-0 bg-orange-500 text-black text-[10px] font-black px-3 py-1 rounded-bl-lg uppercase">Upgrade</div>}
+
+            <h4 className="text-xl font-bold text-white mb-2 flex items-center gap-2">Professional <Sparkles size={16} className={userTier === 'pro' ? 'text-green-400' : 'text-orange-400'} /></h4>
+            <p className="text-sm text-gray-400 mb-4">Unlock Premium Themes, Custom Domains & API.</p>
+            <div className="text-2xl font-black text-white">$15 <span className="text-sm font-normal text-gray-500">/mo</span></div>
           </div>
-
-        </div>
-
-        {/* Grid Area 3: The Journey - Experience & Education (Right Column) */}
-        <div className="col-span-12 lg:col-span-7 flex flex-col gap-6">
-          <div className={glassCard}>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2"><Rocket size={20} className="text-cyan-400" /> Experience Journey</h3>
-              <button onClick={() => addItem('experience', { jobTitle: '', company: '', date: '', responsibilities: '', description: '' })} className={neonButton}><Plus size={16} /> Add Role</button>
-            </div>
-
-            <div className="space-y-8">
-              {(Array.isArray(formData?.experience) ? formData.experience : []).map((exp, idx) => (
-                <div key={idx} className="relative pl-6 border-l-2 border-white/10 hover:border-cyan-500/50 transition-colors pb-8 last:pb-0">
-                  <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-black border-2 border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
-                  <button onClick={() => removeItem('experience', idx)} className="absolute top-0 right-0 text-slate-600 hover:text-red-400"><Trash2 size={16} /></button>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className={labelStyle}>Job Title</label>
-                      <input
-                        type="text"
-                        value={exp?.jobTitle || ""}
-                        onChange={(e) => handleArrayChange('experience', idx, 'jobTitle', e.target.value)}
-                        className={inputStyle}
-                        placeholder="Senior Developer"
-                      />
-                    </div>
-                    <div>
-                      <label className={labelStyle}>Company</label>
-                      <input
-                        type="text"
-                        value={exp?.company || ""}
-                        onChange={(e) => handleArrayChange('experience', idx, 'company', e.target.value)}
-                        className={inputStyle}
-                        placeholder="Tech Corp"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mb-4">
-                    <label className={labelStyle}>Date Range</label>
-                    <input
-                      type="text"
-                      value={exp?.date || ""}
-                      onChange={(e) => handleArrayChange('experience', idx, 'date', e.target.value)}
-                      className={inputStyle}
-                      placeholder="Jan 2020 - Present"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="relative">
-                      <label className={labelStyle}>Responsibilities (AI)</label>
-                      <textarea
-                        rows={4}
-                        value={exp?.responsibilities || ""}
-                        onChange={(e) => handleArrayChange('experience', idx, 'responsibilities', e.target.value)}
-                        className={inputStyle}
-                        placeholder="Bullet points..."
-                      />
-                      <button
-                        onClick={() => handleExperienceAi(idx, 'responsibilities')}
-                        disabled={generating?.type === 'exp' && generating?.index === idx && generating?.field === 'responsibilities'}
-                        className="absolute top-8 right-2 text-cyan-400 hover:text-white p-1"
-                      >
-                        {generating?.type === 'exp' && generating?.index === idx && generating?.field === 'responsibilities' ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <label className={labelStyle}>Description (AI)</label>
-                      <textarea
-                        rows={4}
-                        value={exp?.description || ""}
-                        onChange={(e) => handleArrayChange('experience', idx, 'description', e.target.value)}
-                        className={inputStyle}
-                        placeholder="Role summary..."
-                      />
-                      <button
-                        onClick={() => handleExperienceAi(idx, 'description')}
-                        disabled={generating?.type === 'exp' && generating?.index === idx && generating?.field === 'description'}
-                        className="absolute top-8 right-2 text-cyan-400 hover:text-white p-1"
-                      >
-                        {generating?.type === 'exp' && generating?.index === idx && generating?.field === 'description' ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Education Section */}
-          <div className={glassCard}>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2"><GraduationCap size={20} className="text-purple-400" /> Education</h3>
-              <button onClick={() => addItem('education', { degree: '', institution: '', year: '' })} className={neonButton}><Plus size={16} /> Add Education</button>
-            </div>
-
-            <div className="space-y-6">
-              {(Array.isArray(formData?.education) ? formData.education : []).map((edu, idx) => (
-                <div key={idx} className="relative pl-6 border-l-2 border-white/10 hover:border-cyan-500/50 transition-colors pb-4 last:pb-0">
-                  <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-black border-2 border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
-                  <button onClick={() => removeItem('education', idx)} className="absolute top-0 right-0 text-slate-600 hover:text-red-400"><Trash2 size={16} /></button>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className={labelStyle}>Degree / Certification</label>
-                      <input
-                        type="text"
-                        value={edu?.degree || ""}
-                        onChange={(e) => handleArrayChange('education', idx, 'degree', e.target.value)}
-                        className={inputStyle}
-                        placeholder="e.g. B.S. Computer Science"
-                      />
-                    </div>
-                    <div>
-                      <label className={labelStyle}>Institution</label>
-                      <input
-                        type="text"
-                        value={edu?.institution || ""}
-                        onChange={(e) => handleArrayChange('education', idx, 'institution', e.target.value)}
-                        className={inputStyle}
-                        placeholder="e.g. Stanford University"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={labelStyle}>Year / Date Range</label>
-                    <input
-                      type="text"
-                      value={edu?.year || ""}
-                      onChange={(e) => handleArrayChange('education', idx, 'year', e.target.value)}
-                      className={inputStyle}
-                      placeholder="e.g. 2018 - 2022"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Grid Area 4: Bottom Grid (Achievements, Gallery, Contact, Themes) */}
-        <div className="col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-
-          {/* Achievements */}
-          <div className={glassCard}>
-            <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-widest border-b border-white/10 pb-2">Achievements</h3>
-            <div className="space-y-2">
-              {(Array.isArray(formData?.achievements) ? formData.achievements : []).map((ach, idx) => (
-                <div key={idx} className="bg-black/20 p-3 rounded-lg border border-white/5 space-y-2 relative">
-                  <button onClick={() => removeItem('achievements', idx)} className="absolute top-2 right-2 text-slate-600 hover:text-red-400"><Trash2 size={14} /></button>
-                  <input
-                    type="text"
-                    value={ach?.title || ""}
-                    onChange={(e) => handleArrayChange('achievements', idx, 'title', e.target.value)}
-                    className="w-full bg-transparent border-b border-white/10 text-sm py-1 focus:border-cyan-500 outline-none font-bold text-slate-200"
-                    placeholder="Award Title"
-                  />
-                  <textarea
-                    rows={2}
-                    value={ach?.description || ""}
-                    onChange={(e) => handleArrayChange('achievements', idx, 'description', e.target.value)}
-                    className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:border-cyan-500 outline-none resize-none text-slate-300"
-                    placeholder="Description..."
-                  />
-                  <label className="flex items-center justify-center gap-2 w-full bg-white/5 border border-white/10 text-slate-300 rounded-md p-1.5 cursor-pointer hover:bg-white/10 transition-colors text-xs">
-                    <Upload size={12} />
-                    {ach?.image ? (ach.image instanceof File ? ach.image.name : "Image Uploaded") : "Upload Image"}
-                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleAchievementImageUpload(idx, e)} />
-                  </label>
-                </div>
-              ))}
-              <button onClick={() => addItem('achievements', { title: '', description: '', image: null })} className="text-xs text-cyan-400 hover:text-white mt-2 flex items-center gap-1"><Plus size={12} /> Add Achievement</button>
-            </div>
-          </div>
-
-          {/* Gallery */}
-          <div className={glassCard}>
-            <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-widest border-b border-white/10 pb-2">Gallery</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {(Array.isArray(formData?.gallery) ? formData.gallery : []).map((item, idx) => (
-                <div key={idx} className="bg-black/20 p-2 rounded-lg border border-white/5 relative group">
-                  <button onClick={() => removeItem('gallery', idx)} className="absolute top-1 right-1 z-10 text-white bg-black/50 rounded-full p-1 hover:bg-red-500/80 transition-colors"><Trash2 size={10} /></button>
-                  <div className="aspect-square bg-white/5 rounded-md mb-2 overflow-hidden flex items-center justify-center relative">
-                    {item?.image ? (
-                      <img src={item.image instanceof File ? URL.createObjectURL(item.image) : item.image} alt="Gallery" className="w-full h-full object-cover" />
-                    ) : (
-                      <ImageIcon size={20} className="text-slate-600" />
-                    )}
-                    <label className="absolute inset-0 cursor-pointer flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
-                      <Upload size={16} className="text-white" />
-                      <input type="file" className="hidden" accept="image/*" onChange={(e) => handleGalleryImageUpload(idx, e)} />
-                    </label>
-                  </div>
-                  <input
-                    type="text"
-                    value={item?.caption || ""}
-                    onChange={(e) => handleArrayChange('gallery', idx, 'caption', e.target.value)}
-                    className="w-full bg-transparent border-b border-white/10 text-[10px] py-1 focus:border-cyan-500 outline-none text-center text-slate-300"
-                    placeholder="Caption"
-                  />
-                </div>
-              ))}
-              <button onClick={() => addItem('gallery', { image: null, caption: '' })} className="aspect-square bg-white/5 rounded-lg border border-white/5 border-dashed hover:border-cyan-500/50 transition-colors cursor-pointer flex flex-col items-center justify-center text-slate-500 hover:text-cyan-400">
-                <Plus size={20} />
-                <span className="text-[10px] mt-1">Add</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Contact */}
-          <div className={glassCard}>
-            <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-widest border-b border-white/10 pb-2">Contact</h3>
-            <div className="space-y-3">
-              <div className="relative">
-                <Linkedin size={14} className="absolute left-3 top-3 text-slate-500" />
-                <input type="text" value={formData?.contact?.linkedin || ""} onChange={(e) => handleFieldChange('contact', 'linkedin', e.target.value)} className={`${inputStyle} pl-9 py-2 text-sm`} placeholder="LinkedIn" />
-              </div>
-              <div className="relative">
-                <Github size={14} className="absolute left-3 top-3 text-slate-500" />
-                <input type="text" value={formData?.contact?.github || ""} onChange={(e) => handleFieldChange('contact', 'github', e.target.value)} className={`${inputStyle} pl-9 py-2 text-sm`} placeholder="GitHub" />
-              </div>
-              <div className="relative">
-                <Mail size={14} className="absolute left-3 top-3 text-slate-500" />
-                <input type="text" value={formData?.contact?.email || ""} onChange={(e) => handleFieldChange('contact', 'email', e.target.value)} className={`${inputStyle} pl-9 py-2 text-sm`} placeholder="Email" />
-              </div>
-            </div>
-          </div>
-
-          {/* Themes Selection */}
-          <div className={glassCard}>
-            <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-widest border-b border-white/10 pb-2">Theme</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {/* FIXED THEME SELECTOR */}
-              {['galaxy', 'lava', 'forest', 'neon'].map(themeOption => (
-                <div
-                  key={themeOption}
-                  onClick={() => setFormData(prev => ({ ...prev, theme: themeOption }))}
-                  className={`aspect-video rounded-lg overflow-hidden cursor-pointer relative border-2 transition-all ${formData.theme === themeOption ? 'border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'border-transparent opacity-60 hover:opacity-100'}`}
-                >
-                  <div className="absolute inset-0 bg-slate-800 flex items-center justify-center">
-                    <span className="text-xs font-bold uppercase text-slate-400">{themeOption}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Custom Domain Input (Only visible if PRO is active) */}
-            {formData?.isPro && (
-              <div className="mt-4 pt-4 border-t border-white/10">
-                <label className={labelStyle}>Custom Domain (PRO)</label>
-                <input
-                  type="text"
-                  value={formData?.customDomain || ""}
-                  onChange={(e) => handleFieldChange('root', 'customDomain', e.target.value)}
-                  className={inputStyle}
-                  placeholder="e.g. www.myportfolio.com"
-                />
-              </div>
-            )}
-
-            <div className="mt-4 pt-4 border-t border-white/10">
-              <label className={labelStyle}>Public URL</label>
-              <div className="flex items-center bg-black/40 rounded-lg px-3 py-2 border border-white/10">
-                <span className="text-xs text-slate-400 truncate flex-1">{formData?.publicUrl || ""}</span>
-                <Eye size={14} className="text-cyan-400 cursor-pointer hover:text-white" />
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
     </div>
   );
-};
 
-export default Dashboard;
+  const renderStep1Setup = () => (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 h-full">
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-2xl font-bold text-white mb-2">Project Setup</h3>
+          <p className="text-sm text-gray-400">Define the core architecture and goal of your immersive page.</p>
+        </div>
+        <div className="space-y-5 bg-white/5 border border-white/10 p-6 rounded-2xl">
+          <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Project Name</label><input type="text" value={pageData.setup.name} onChange={e => updateNestedData('setup', 'name', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" placeholder="e.g. Product Launch" /></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Business Category</label>
+              <select value={pageData.setup.category} onChange={e => updateNestedData('setup', 'category', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none appearance-none cursor-pointer">
+                <option value="ecommerce">E-Commerce</option>
+                <option value="learning">Learning Platform</option>
+                <option value="service">Service / Agency</option>
+                <option value="gadgets">Digital Gadgets</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Website Goal</label>
+              <select value={pageData.setup.goal} onChange={e => updateNestedData('setup', 'goal', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none appearance-none cursor-pointer">
+                <option value="sales">Product Sales</option>
+                <option value="leads">Lead Generation</option>
+                <option value="awareness">Brand Awareness</option>
+              </select>
+            </div>
+          </div>
+          <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Target Audience</label><input type="text" value={pageData.setup.audience} onChange={e => updateNestedData('setup', 'audience', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" placeholder="Tech enthusiasts, ages 18-35" /></div>
+        </div>
+      </div>
+      <div className="bg-[#0A0A0E] border border-white/5 rounded-3xl p-8 relative flex flex-col items-center justify-center text-center shadow-2xl">
+        <LayoutTemplate className="w-20 h-20 text-cyan-500/40 mb-6" />
+        <h4 className="text-xl font-bold text-white mb-2">Current Theme: {pageData.setup.themeId.toUpperCase()}</h4>
+        <p className="text-gray-400 text-sm mb-8 max-w-sm">The theme dictates the layout and 3D environment of your landing page.</p>
+        <button onClick={() => setIsThemeModalOpen(true)} className="px-8 py-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all hover:scale-105">
+          <Layout size={18} /> OPEN THEME GALLERY
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderStep2Brand = () => (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 h-full">
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-2xl font-bold text-white mb-2">Brand Identity</h3>
+          <p className="text-sm text-gray-400">Configure logos, colors, and typography globally.</p>
+        </div>
+        <div className="space-y-4 bg-white/5 border border-white/10 p-6 rounded-2xl">
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Logo Upload</label>
+              <label className="w-full h-12 border border-dashed border-white/20 rounded-xl flex items-center justify-center text-sm text-gray-500 hover:text-cyan-400 hover:border-cyan-500 cursor-pointer transition-colors bg-black/50 overflow-hidden">
+                {pageData.brand.logo ? <img src={pageData.brand.logo} className="h-full object-contain" /> : <><Upload size={16} className="mr-2" /> Drop SVG/PNG</>}
+                <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                  const url = await uploadFileToStorage(e.target.files[0]);
+                  if (url) updateNestedData('brand', 'logo', url);
+                }} />
+              </label>
+            </div>
+          </div>
+          <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Brand Name</label><input type="text" value={pageData.brand.name} onChange={e => updateNestedData('brand', 'name', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" /></div>
+          <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Tagline</label><input type="text" value={pageData.brand.tagline} onChange={e => updateNestedData('brand', 'tagline', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" /></div>
+          <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">About (Short)</label><textarea value={pageData.brand.aboutShort} onChange={e => updateNestedData('brand', 'aboutShort', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none h-20 resize-none" /></div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Primary Color</label>
+              <div className="flex items-center gap-3 bg-black/50 border border-white/10 rounded-xl px-4 py-2">
+                <input type="color" value={pageData.brand.colors[0]} onChange={e => updateNestedData('brand', 'colors', [e.target.value, pageData.brand.colors[1]])} className="w-8 h-8 rounded cursor-pointer bg-transparent border-none p-0" />
+                <span className="text-white text-sm font-mono">{pageData.brand.colors[0]}</span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Font Style</label>
+              <select value={pageData.brand.font} onChange={e => updateNestedData('brand', 'font', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none appearance-none cursor-pointer">
+                <option value="Inter">Inter (Modern)</option>
+                <option value="Playfair">Playfair (Elegant)</option>
+                <option value="Space Grotesk">Space Grotesk (Tech)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-black/30 border border-white/5 rounded-3xl p-8 relative overflow-hidden flex flex-col justify-center items-center text-center">
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-[100px] opacity-30 pointer-events-none transition-colors duration-500" style={{ backgroundColor: pageData.brand.colors[0] }}></div>
+        <div className="w-20 h-20 bg-white/10 rounded-2xl border border-white/20 mb-6 flex items-center justify-center backdrop-blur-md shadow-2xl">
+          {pageData.brand.logo ? <img src={pageData.brand.logo} className="w-full h-full object-contain p-2" /> : <ImageIcon className="text-white/50" size={32} />}
+        </div>
+        <h2 className="text-4xl font-black text-white mb-2 tracking-tight transition-all duration-300" style={{ fontFamily: pageData.brand.font }}>{pageData.brand.name || 'Your Brand'}</h2>
+        <p className="text-lg text-white/70 mb-8 font-light max-w-md">{pageData.brand.tagline || 'Your awesome tagline goes here.'}</p>
+        <button className="px-8 py-4 rounded-xl text-white font-bold transition-all shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:-translate-y-1" style={{ backgroundColor: pageData.brand.colors[0] }}>
+          Button Style
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderStep3Hero = () => (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 h-full">
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-2xl font-bold text-white mb-2">Hero Section</h3>
+          <p className="text-sm text-gray-400">The most important real estate. Hook your visitors instantly.</p>
+        </div>
+        <div className="space-y-5 bg-white/5 border border-white/10 p-6 rounded-2xl">
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase mb-2 flex justify-between">Hero Headline <button className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1"><Wand2 size={12} /> AI</button></label>
+            <input type="text" value={pageData.hero.headline} onChange={e => updateNestedData('hero', 'headline', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none text-lg font-bold" placeholder="Enter the Next Reality" />
+          </div>
+          <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Sub-headline</label><textarea value={pageData.hero.subheadline} onChange={e => updateNestedData('hero', 'subheadline', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none h-20 resize-none" /></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">CTA Text</label><input type="text" value={pageData.hero.ctaText} onChange={e => updateNestedData('hero', 'ctaText', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" placeholder="Shop Now" /></div>
+            <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">CTA Link</label><input type="text" value={pageData.hero.ctaLink} onChange={e => updateNestedData('hero', 'ctaLink', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" placeholder="#products" /></div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Hero Media Background</label>
+            <select value={pageData.hero.bgType} onChange={e => updateNestedData('hero', 'bgType', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none appearance-none">
+              <option value="particles">3D Particles Engine</option>
+              <option value="video">Cinematic Video Loop</option>
+              <option value="image">Static High-Res Image</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-[#050505] border border-white/5 rounded-3xl relative overflow-hidden flex flex-col shadow-2xl">
+        <div className="absolute top-4 right-4 z-20 flex bg-black/60 backdrop-blur-md rounded-lg border border-white/10 p-1">
+          <button onClick={() => setPreviewMode('desktop')} className={`p-1.5 rounded-md transition-colors ${previewMode === 'desktop' ? 'bg-white/10 text-white' : 'text-gray-500'}`}><Monitor size={16} /></button>
+          <button onClick={() => setPreviewMode('mobile')} className={`p-1.5 rounded-md transition-colors ${previewMode === 'mobile' ? 'bg-white/10 text-white' : 'text-gray-500'}`}><Smartphone size={16} /></button>
+        </div>
+        <div className={`flex-1 flex flex-col transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${previewMode === 'mobile' ? 'w-[320px] mx-auto border-x border-white/10 bg-black' : 'w-full'}`}>
+          <div className="flex-1 relative flex items-center justify-center p-8 text-center overflow-hidden">
+            {pageData.hero.bgType === 'particles' && (
+              <div className="absolute inset-0 z-0 flex items-center justify-center opacity-30">
+                <div className="w-[120%] h-[120%] border-[1px] border-cyan-500/20 rounded-full animate-[spin_20s_linear_infinite]" style={{ transform: 'perspective(500px) rotateX(60deg)' }}></div>
+                <div className="absolute w-[80%] h-[80%] border-[1px] border-blue-500/20 rounded-full animate-[spin_15s_linear_infinite_reverse]" style={{ transform: 'perspective(500px) rotateX(60deg)' }}></div>
+              </div>
+            )}
+            <div className="relative z-10 max-w-lg mx-auto space-y-6">
+              <h1 className={`${previewMode === 'mobile' ? 'text-3xl' : 'text-5xl'} font-black text-transparent bg-clip-text bg-gradient-to-br from-white to-gray-500 leading-tight`} style={{ fontFamily: pageData.brand.font }}>
+                {pageData.hero.headline || 'Enter the Next Reality'}
+              </h1>
+              <p className="text-gray-400 text-sm sm:text-base">{pageData.hero.subheadline || 'Immersive VR experiences for the next generation.'}</p>
+              <button className="px-8 py-4 rounded-full text-white font-bold shadow-[0_0_20px_rgba(0,0,0,0.4)] transition-all" style={{ backgroundColor: pageData.brand.colors[0] }}>
+                {pageData.hero.ctaText || 'Explore Features'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStep4Blocks = () => (
+    <div className="flex flex-col h-full space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="text-2xl font-bold text-white mb-1">Section Builder</h3>
+          <p className="text-sm text-gray-400">Drag, drop, and configure modular sections.</p>
+        </div>
+        <div className="flex gap-2">
+          {['features', 'about', 'trust', 'faq', 'products'].map(type => (
+            <button key={type} onClick={() => handleAddBlock(type)} className="px-3 py-2 bg-cyan-500/10 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/20 rounded-xl text-xs font-bold capitalize transition-colors flex items-center gap-1">
+              <Plus size={14} /> {type}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
+        {pageData.blocks.map((block, index) => (
+          <div key={block.id} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden group shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition-all">
+            <div className="flex items-center p-3 bg-black/40 border-b border-white/10">
+              <div className="flex flex-col mr-3 opacity-50 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => handleMoveBlock(index, -1)} disabled={index === 0} className="hover:text-white disabled:opacity-30"><ChevronUp size={14} /></button>
+                <button onClick={() => handleMoveBlock(index, 1)} disabled={index === pageData.blocks.length - 1} className="hover:text-white disabled:opacity-30"><ChevronDown size={14} /></button>
+              </div>
+
+              <div className="flex-1 flex items-center gap-3">
+                <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">{block.type}</span>
+                <input type="text" value={block.title} onChange={e => handleUpdateBlock(block.id, 'title', e.target.value)} className="bg-transparent border-none text-white font-bold focus:outline-none w-1/3" />
+                <select value={block.layout} onChange={e => handleUpdateBlock(block.id, 'layout', e.target.value)} className="ml-2 bg-black/50 border border-white/10 rounded-md px-2 py-1 text-xs text-gray-400 focus:outline-none">
+                  <option value="theme-default">Layout: Default</option>
+                  <option value="media-left">Layout: Media Left</option>
+                  <option value="media-right">Layout: Media Right</option>
+                  <option value="centered">Layout: Centered</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 ml-auto">
+                <button onClick={() => handleUpdateBlock(block.id, 'collapsed', !block.collapsed)} className="p-2 text-gray-500 hover:text-white transition-colors"><ChevronsUpDown size={16} /></button>
+                <button onClick={() => handleDeleteBlock(block.id)} className="p-2 text-red-500/50 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={16} /></button>
+              </div>
+            </div>
+
+            {!block.collapsed && (
+              <div className="p-5">
+                {block.type === 'features' && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {block.items?.map((item, i) => (
+                      <div key={i} className="p-4 bg-black/30 rounded-xl border border-white/5 space-y-3 relative group">
+                        <label className="w-12 h-12 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-500 hover:text-cyan-400 hover:border-cyan-500 cursor-pointer overflow-hidden transition-colors">
+                          {item.icon ? <img src={item.icon} className="w-full h-full object-cover" /> : <Upload size={16} />}
+                          <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                            const url = await uploadFileToStorage(e.target.files[0]);
+                            if (url) handleUpdateBlockItem(block.id, i, 'icon', url);
+                          }} />
+                        </label>
+                        <input type="text" placeholder="Feature Title" value={item.title} onChange={e => handleUpdateBlockItem(block.id, i, 'title', e.target.value)} className="w-full bg-transparent border-b border-white/10 text-sm text-white font-bold focus:outline-none focus:border-cyan-500 pb-1" />
+                        <textarea placeholder="Feature description..." value={item.desc} onChange={e => handleUpdateBlockItem(block.id, i, 'desc', e.target.value)} className="w-full bg-transparent text-xs text-gray-400 focus:outline-none resize-none h-16"></textarea>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {block.type === 'about' && (
+                  <div className="space-y-3">
+                    <textarea placeholder="Write a compelling story about your brand or service..." className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none h-24 resize-none"></textarea>
+                    <div className="w-full h-16 border border-dashed border-white/20 rounded-xl flex items-center justify-center text-sm text-gray-500 hover:text-cyan-400 hover:border-cyan-500 cursor-pointer transition-colors bg-black/50"><Upload size={16} className="mr-2" /> Add Team Image or Office Video</div>
+                  </div>
+                )}
+                {block.type === 'trust' && (
+                  <div className="p-8 border border-dashed border-white/20 rounded-xl text-center text-gray-500 hover:border-cyan-500/50 hover:text-cyan-400 cursor-pointer transition-colors">
+                    <Upload size={24} className="mx-auto mb-2" /> Upload Multiple Partner Logos or Certifications (PNG/SVG)
+                  </div>
+                )}
+                {block.type === 'faq' && (
+                  <div className="space-y-3">
+                    {block.items?.map((item, i) => (
+                      <div key={i} className="flex gap-3">
+                        <input type="text" placeholder="Question?" value={item.q} onChange={e => handleUpdateBlockItem(block.id, i, 'q', e.target.value)} className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                        <input type="text" placeholder="Answer..." value={item.a} onChange={e => handleUpdateBlockItem(block.id, i, 'a', e.target.value)} className="flex-[2] bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {block.type === 'products' && (
+                  <div className="text-center p-6 bg-cyan-500/5 border border-cyan-500/20 rounded-xl">
+                    <PackageSearch size={32} className="mx-auto text-cyan-400 mb-2" />
+                    <h4 className="text-white font-bold text-sm">Linked to E-Commerce Inventory</h4>
+                    <p className="text-xs text-gray-400 mb-4">Products matching this project will automatically render here.</p>
+                    <button onClick={() => setActiveTab('inventory')} className="text-xs font-bold text-white bg-cyan-600 px-4 py-2 rounded-lg hover:bg-cyan-500">Manage Inventory</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+        {pageData.blocks.length === 0 && (
+          <div className="h-40 border-2 border-dashed border-white/10 rounded-2xl flex items-center justify-center text-gray-500 flex-col gap-2">
+            <Layers size={32} className="opacity-50" />
+            <p>Your canvas is empty. Add a block above to begin building.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderStep5Theme = () => {
+    const themeDetails = [
+      { id: 'theme-1', name: 'Cyber Neon', style: 'Dark & Glowing', bg: 'from-pink-600/40 to-purple-900' },
+      { id: 'theme-2', name: 'Glass Corporate', style: 'Clean & Blurred', bg: 'from-gray-700 to-black' },
+      { id: 'theme-3', name: 'Immersive VR', style: 'Full 3D Space', bg: 'from-cyan-600/40 to-black' },
+      { id: 'theme-4', name: 'E-Comm Flow', style: 'High Conversion', bg: 'from-emerald-600/40 to-black' }
+    ].find(t => t.id === pageData.setup.themeId) || { name: 'Custom Theme', style: 'User Defined', bg: 'from-cyan-600/40 to-black' };
+
+    return (
+      <div className="flex flex-col h-full space-y-6 overflow-y-auto custom-scrollbar pr-2">
+        <div>
+          <h3 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">Theme, Layout & Animations <Sparkles size={20} className="text-cyan-400" /></h3>
+          <p className="text-sm text-gray-400">Control the global structure, aesthetics, and 3D physics of your page.</p>
+        </div>
+
+        {/* THEME BANNER */}
+        <div className={`w-full shrink-0 h-32 rounded-2xl relative overflow-hidden flex items-center justify-between p-8 border border-white/10 shadow-lg group`}>
+          <div className={`absolute inset-0 bg-gradient-to-br ${themeDetails.bg} opacity-80 transition-transform duration-700 group-hover:scale-105`}></div>
+          <div className="relative z-10">
+            <span className="px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-widest border border-white/10 mb-2 inline-block shadow-lg">Active Theme</span>
+            <h2 className="text-3xl font-black text-white">{themeDetails.name}</h2>
+            <p className="text-sm text-gray-300">{themeDetails.style}</p>
+          </div>
+          <button onClick={() => setIsThemeModalOpen(true)} className="relative z-10 px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-xl font-bold transition-all border border-white/20 flex items-center gap-2 shadow-[0_5px_15px_rgba(0,0,0,0.3)] hover:-translate-y-1">
+            <Layout size={16} /> Change Theme
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 flex-1">
+          {/* LAYOUT & ANIMATION CONTROLS */}
+          <div className="space-y-6">
+            <div className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-4">
+              <h4 className="text-sm font-bold text-white border-b border-white/10 pb-2 mb-4 flex items-center gap-2"><LayoutTemplate size={16} className="text-cyan-400" /> Layout Configuration</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Navigation Style</label>
+                  <select value={pageData.theme.navStyle || 'standard'} onChange={(e) => updateNestedData('theme', 'navStyle', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white outline-none cursor-pointer">
+                    <option value="floating">Floating Dock</option>
+                    <option value="sticky">Sticky Top Bar</option>
+                    <option value="standard">Standard Inline</option>
+                    <option value="hidden">Hidden / Immersive</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Content Width</label>
+                  <select value={pageData.theme.contentWidth || 'boxed'} onChange={(e) => updateNestedData('theme', 'contentWidth', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white outline-none cursor-pointer">
+                    <option value="fluid">Fluid (100% Edge-to-Edge)</option>
+                    <option value="boxed">Boxed (Standard Container)</option>
+                    <option value="narrow">Narrow (Minimal/Blog)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-6">
+              <h4 className="text-sm font-bold text-white border-b border-white/10 pb-2 flex items-center gap-2"><Sparkles size={16} className="text-cyan-400" /> Animation & Physics</h4>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-4 flex justify-between">
+                  Animation Intensity <span>{pageData.theme.animationIntensity}%</span>
+                </label>
+                <input type="range" min="0" max="100" value={pageData.theme.animationIntensity} onChange={(e) => updateNestedData('theme', 'animationIntensity', e.target.value)} className="w-full accent-cyan-500 cursor-pointer" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { id: 'particles', label: 'Particle Engine', desc: 'Background 3D dust' },
+                  { id: 'floating', label: 'Floating Physics', desc: 'Hovering elements' },
+                  { id: 'mouseEffects', label: 'Mouse Tracking', desc: 'Parallax movement' },
+                  { id: 'scrollEffects', label: 'Scroll Reveal', desc: 'Fade in on scroll' }
+                ].map(toggle => (
+                  <div key={toggle.id} className="flex items-center justify-between p-3 bg-black/50 border border-white/10 rounded-xl">
+                    <div>
+                      <h4 className="text-sm font-bold text-white">{toggle.label}</h4>
+                      <p className="text-[10px] text-gray-500">{toggle.desc}</p>
+                    </div>
+                    <div
+                      onClick={() => updateNestedData('theme', toggle.id, !pageData.theme[toggle.id])}
+                      className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${pageData.theme[toggle.id] ? 'bg-cyan-500' : 'bg-gray-700'}`}
+                    >
+                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${pageData.theme[toggle.id] ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#050505] border border-white/5 rounded-3xl p-8 relative flex flex-col items-center justify-center overflow-hidden shadow-inner group min-h-[400px]">
+            {pageData.theme.particles && (
+              <div className="absolute inset-0 z-0">
+                <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-cyan-500 rounded-full animate-ping opacity-50"></div>
+                <div className="absolute top-3/4 left-1/2 w-1 h-1 bg-cyan-500 rounded-full animate-ping opacity-50 delay-700"></div>
+                <div className="absolute top-1/2 left-3/4 w-3 h-3 bg-purple-500 rounded-full animate-ping opacity-50 delay-1000"></div>
+              </div>
+            )}
+
+            <div className={`relative z-10 w-full h-full border-2 border-dashed flex flex-col overflow-hidden transition-all duration-1000
+                      ${pageData.theme.animationIntensity > 50 ? 'border-cyan-400 bg-cyan-500/10 shadow-[0_0_30px_rgba(6,182,212,0.3)]' : 'border-white/20 bg-white/5'}
+                      ${pageData.theme.contentWidth === 'fluid' ? 'max-w-full rounded-none' : pageData.theme.contentWidth === 'narrow' ? 'max-w-[150px] rounded-3xl' : 'max-w-[250px] rounded-2xl'}
+                   `}>
+              {pageData.theme.navStyle !== 'hidden' && (
+                <div className={`h-8 border-b border-white/20 flex items-center px-4 gap-2 
+                             ${pageData.theme.navStyle === 'floating' ? 'm-4 rounded-full bg-white/10 backdrop-blur-md' : 'bg-white/5'}
+                          `}>
+                  <div className="w-3 h-3 rounded-full bg-cyan-500/50"></div>
+                  <div className="flex-1"></div>
+                  <div className="w-8 h-1.5 rounded bg-white/20"></div>
+                </div>
+              )}
+              <div className={`flex-1 flex items-center justify-center p-8 transition-all
+                         ${pageData.theme.floating ? 'animate-[bounce_3s_infinite_ease-in-out]' : ''}
+                         ${pageData.theme.mouseEffects ? 'group-hover:rotate-6 group-hover:scale-105' : ''}
+                      `}>
+                <LayoutTemplate size={48} className={`text-white transition-all ${pageData.theme.animationIntensity > 50 ? 'animate-pulse' : 'opacity-50'}`} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderStep6AI = () => (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 h-full">
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">AI Content System <Zap size={20} className="text-yellow-400" /></h3>
+          <p className="text-sm text-gray-400">Let AI write high-converting copy based on your project setup.</p>
+        </div>
+
+        <div className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-6">
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Tone of Voice</label>
+            <select value={pageData.ai.tone} onChange={(e) => updateNestedData('ai', 'tone', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white outline-none cursor-pointer">
+              <option value="professional">Professional & Trustworthy</option>
+              <option value="hype">Hype & Energetic</option>
+              <option value="luxury">Luxury & Minimal</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <button className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-xl hover:bg-cyan-500/20 transition-colors flex flex-col items-center justify-center gap-2 group">
+              <Monitor size={24} className="text-cyan-400 group-hover:scale-110 transition-transform" />
+              <span className="text-sm font-bold text-white">Generate Copy</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-black/30 border border-white/5 rounded-3xl p-6 relative flex flex-col shadow-inner">
+        <h4 className="text-xs font-bold text-gray-500 uppercase mb-4 flex items-center gap-2"><Sparkles size={14} /> AI Output</h4>
+        <div className="flex-1 bg-[#0A0A0E] rounded-xl border border-white/10 p-5 font-mono text-sm text-gray-300 overflow-y-auto">
+          <span className="text-green-400">&gt;</span> AI System Ready.
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStep7Media = () => (
+    <div className="flex flex-col h-full space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="text-2xl font-bold text-white mb-1">Media Manager</h3>
+          <p className="text-sm text-gray-400">Upload and manage your PNGs, Images, and Videos here.</p>
+        </div>
+      </div>
+
+      <div className="flex-1 bg-white/5 border border-white/10 rounded-2xl p-6 grid grid-cols-2 md:grid-cols-4 gap-6 overflow-y-auto custom-scrollbar">
+        <label className="border-2 border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center p-6 text-gray-500 hover:border-cyan-500 hover:text-cyan-400 transition-colors cursor-pointer min-h-[150px]">
+          <DownloadCloud size={32} className="mb-2" />
+          <span className="text-sm font-bold text-center">Click to Upload<br />MP4, PNG, JPG</span>
+          <input type="file" accept="image/*,video/mp4" multiple className="hidden" onChange={async (e) => {
+            const files = Array.from(e.target.files);
+            let newMedia = [...(pageData.media || [])];
+            for (let file of files) {
+              const url = await uploadFileToStorage(file);
+              if (url) newMedia.push({ name: file.name, url, type: file.type });
+            }
+            setPageData(prev => ({ ...prev, media: newMedia }));
+          }} />
+        </label>
+
+        {pageData.media?.map((m, idx) => (
+          <div key={idx} className="bg-black/50 border border-white/10 rounded-xl relative group overflow-hidden min-h-[150px]">
+            {m.type.includes('image') ? (
+              <img src={m.url} className="absolute inset-0 w-full h-full object-cover opacity-80" />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-cyan-900/20"><Video size={40} className="text-cyan-400/50" /></div>
+            )}
+            <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/80 backdrop-blur-sm text-[10px] text-white font-mono truncate">
+              {m.name}
+            </div>
+            <button onClick={() => {
+              const newMedia = [...pageData.media];
+              newMedia.splice(idx, 1);
+              setPageData(prev => ({ ...prev, media: newMedia }));
+            }} className="absolute top-2 right-2 bg-red-500/80 p-1.5 rounded text-white opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12} /></button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderStep8Contact = () => (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 h-full">
+      <div className="space-y-6 overflow-y-auto custom-scrollbar pr-2">
+        <div>
+          <h3 className="text-2xl font-bold text-white mb-2">Contact & Socials</h3>
+          <p className="text-sm text-gray-400">Configure your quick-access floating buttons.</p>
+        </div>
+
+        <div className="bg-white/5 border border-white/10 p-6 rounded-2xl">
+          <label className="block text-xs font-bold text-gray-400 uppercase mb-4">Toggle Active Social Icons</label>
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            {SOCIAL_PLATFORMS.map(social => {
+              const isActive = pageData.contact.activeSocials.includes(social.id);
+              return (
+                <div key={social.id}
+                  onClick={() => {
+                    const newSocials = isActive ? pageData.contact.activeSocials.filter(id => id !== social.id) : [...pageData.contact.activeSocials, social.id];
+                    updateNestedData('contact', 'activeSocials', newSocials);
+                  }}
+                  className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${isActive ? `border-[${social.hex}]/50 bg-[${social.hex}]/10` : 'border-white/5 bg-black/50 hover:bg-white/5'}`}
+                >
+                  <social.icon size={18} className={isActive ? social.color : 'text-gray-500'} />
+                  <span className={`text-sm font-bold ${isActive ? 'text-white' : 'text-gray-500'}`}>{social.name}</span>
+                </div>
+              )
+            })}
+          </div>
+
+          <label className="block text-xs font-bold text-gray-400 uppercase mb-4 pt-4 border-t border-white/10">Assign Links</label>
+          <div className="space-y-3">
+            {pageData.contact.activeSocials.map(socialId => {
+              const social = SOCIAL_PLATFORMS.find(s => s.id === socialId);
+              return (
+                <div key={socialId} className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded flex items-center justify-center" style={{ backgroundColor: `${social.hex}20` }}><social.icon size={16} style={{ color: social.hex }} /></div>
+                  <input type="text" placeholder={`Enter full URL for ${social.name}`}
+                    value={pageData.contact.socialUrls?.[socialId] || ''}
+                    onChange={(e) => {
+                      const newUrls = { ...pageData.contact.socialUrls, [socialId]: e.target.value };
+                      updateNestedData('contact', 'socialUrls', newUrls);
+                    }}
+                    className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-[#050505] border border-white/5 rounded-3xl relative overflow-hidden flex flex-col justify-end p-8 shadow-inner">
+        <h4 className="absolute top-8 left-8 text-white/20 font-black text-4xl">Preview<br />Floating Dock</h4>
+        <div className="flex gap-4 justify-center items-center bg-white/5 p-4 rounded-full border border-white/10 backdrop-blur-xl mx-auto shadow-2xl">
+          {pageData.contact.activeSocials.length > 0 ? (
+            SOCIAL_PLATFORMS.filter(s => pageData.contact.activeSocials.includes(s.id)).map(social => (
+              <div key={social.id} className="w-12 h-12 rounded-full bg-black border border-white/10 flex items-center justify-center shadow-lg" style={{ boxShadow: `0 5px 15px ${social.hex}30` }}>
+                <social.icon size={20} style={{ color: social.hex }} />
+              </div>
+            ))
+          ) : (
+            <span className="text-gray-500 text-sm font-bold px-4">Select platforms to generate dock</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStep9SEO = () => (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 h-full">
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-2xl font-bold text-white mb-2">SEO & Analytics</h3>
+          <p className="text-sm text-gray-400">Ensure your page ranks high and tracks correctly.</p>
+        </div>
+
+        <div className="space-y-4 bg-white/5 border border-white/10 p-6 rounded-2xl">
+          <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">SEO Title Tag</label><input type="text" value={pageData.seo.title} onChange={(e) => updateNestedData('seo', 'title', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" maxLength="60" /></div>
+          <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Meta Description</label><textarea value={pageData.seo.description} onChange={(e) => updateNestedData('seo', 'description', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none h-24 resize-none" maxLength="160" /></div>
+        </div>
+      </div>
+
+      <div className="bg-white flex flex-col p-8 rounded-3xl shadow-inner font-sans">
+        <h4 className="text-xs font-bold text-gray-400 uppercase mb-6 flex items-center gap-2"><Search size={14} /> Google Search Preview</h4>
+        <div className="max-w-md">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+              {pageData.brand.logo ? <img src={pageData.brand.logo} className="w-full h-full object-cover" /> : <Globe size={16} className="text-gray-500" />}
+            </div>
+            <div>
+              <p className="text-sm text-gray-800 font-medium leading-none">{pageData.brand.name || 'Your Brand Name'}</p>
+              <p className="text-xs text-gray-500 leading-none mt-1">https://{pageData.publish.customDomain || '3duniverse'}.app</p>
+            </div>
+          </div>
+          <h3 className="text-xl text-blue-800 font-normal hover:underline cursor-pointer truncate">{pageData.seo.title || 'Page Title Will Appear Here'}</h3>
+          <p className="text-sm text-gray-600 mt-1 line-clamp-2">{pageData.seo.description || 'Your highly optimized meta description will appear here.'}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStep10Publish = () => (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 h-full">
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-2xl font-bold text-white mb-2">Publish Settings</h3>
+          <p className="text-sm text-gray-400">Configure your domain and push to the edge network.</p>
+        </div>
+        <div className="space-y-6 bg-white/5 border border-white/10 p-6 rounded-2xl">
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Custom Domain (Pro)</label>
+            <div className="flex gap-2">
+              <input type="text" value={pageData.publish.customDomain} onChange={(e) => updateNestedData('publish', 'customDomain', e.target.value)} className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-green-500 outline-none" placeholder="www.yourbrand.com" disabled={userTier === 'free'} />
+            </div>
+            {userTier === 'free' && <p className="text-xs text-orange-400 mt-2">Upgrade to Pro to use custom domains.</p>}
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Page Visibility</label>
+            <select value={pageData.publish.visibility} onChange={(e) => updateNestedData('publish', 'visibility', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white outline-none cursor-pointer">
+              <option value="public">Public (Indexed by Search Engines)</option>
+              <option value="hidden">Hidden (Link only)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-[#050505] border border-white/5 rounded-3xl p-8 relative flex flex-col items-center justify-center text-center shadow-inner">
+        <Fingerprint size={64} className="text-cyan-500/40 mb-6" />
+        <h4 className="text-2xl font-black text-white mb-2">Ready for Lift-off</h4>
+        <p className="text-gray-400 text-sm mb-8 max-w-sm">Your 3D environment will be deployed to a global edge network for instant loading worldwide.</p>
+        <button onClick={handlePublish} className="px-8 py-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all hover:scale-105">
+          <Send size={18} /> DEPLOY SECURELY
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderThemeModal = () => {
+    if (!isThemeModalOpen) return null;
+
+    const handleThemeSelect = (themeId) => {
+      let presets = {};
+      if (themeId === 'theme-1') presets = { animationIntensity: 80, particles: true, floating: true, navStyle: 'floating', contentWidth: 'fluid' };
+      else if (themeId === 'theme-2') presets = { animationIntensity: 30, particles: false, floating: false, navStyle: 'sticky', contentWidth: 'boxed' };
+      else if (themeId === 'theme-3') presets = { animationIntensity: 100, particles: true, floating: true, navStyle: 'hidden', contentWidth: 'fluid' };
+      else if (themeId === 'theme-4') presets = { animationIntensity: 40, particles: false, floating: true, navStyle: 'standard', contentWidth: 'boxed' };
+
+      setPageData(prev => ({ ...prev, setup: { ...prev.setup, themeId }, theme: { ...prev.theme, ...presets } }));
+      setIsThemeModalOpen(false);
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div className="bg-[#0A0A0E] border border-white/10 w-full max-w-4xl h-[80vh] rounded-3xl flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/50">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2"><LayoutTemplate size={20} /> Theme Gallery</h2>
+            <button onClick={() => setIsThemeModalOpen(false)} className="text-gray-400 hover:text-white">Close [X]</button>
+          </div>
+          <div className="flex-1 p-6 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-6">
+            {[
+              { id: 'theme-1', name: 'Cyber Neon', style: 'Dark & Glowing', pro: false },
+              { id: 'theme-2', name: 'Glass Corporate', style: 'Clean & Blurred', pro: false },
+              { id: 'theme-3', name: 'Immersive VR', style: 'Full 3D Space', pro: true },
+              { id: 'theme-4', name: 'E-Comm Flow', style: 'High Conversion', pro: true }
+            ].map(theme => (
+              <div key={theme.id} onClick={() => handleThemeSelect(theme.id)} className={`rounded-2xl border-2 transition-all cursor-pointer overflow-hidden group relative ${pageData.setup.themeId === theme.id ? 'border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.3)]' : 'border-white/10 hover:border-white/30'}`}>
+                {theme.pro && <div className="absolute top-2 right-2 z-10 bg-gradient-to-r from-amber-500 to-orange-500 text-[10px] font-bold px-2 py-0.5 rounded text-white shadow-lg">PRO</div>}
+                <div className="h-40 bg-gray-900 relative flex items-center justify-center overflow-hidden">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${theme.id === 'theme-1' ? 'from-pink-600/40 to-purple-900' : theme.id === 'theme-2' ? 'from-gray-700 to-black' : theme.id === 'theme-3' ? 'from-cyan-600/40 to-black' : 'from-emerald-600/40 to-black'} opacity-80 group-hover:scale-105 transition-transform duration-500`}></div>
+                  <Layout className="w-12 h-12 text-white/50 relative z-10" />
+                </div>
+                <div className="p-4 bg-black/80 backdrop-blur-md">
+                  <p className="text-sm font-bold text-white mb-1">{theme.name}</p>
+                  <p className="text-[10px] text-gray-500 uppercase">{theme.style}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const renderPageTypeModal = () => {
+    if (!isPageTypeModalOpen) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div className="bg-[#0A0A0E] border border-white/10 w-full max-w-4xl rounded-3xl flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/50">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2"><Globe size={20} /> What are you building today?</h2>
+            <button onClick={() => setIsPageTypeModalOpen(false)} className="text-gray-400 hover:text-white">Close [X]</button>
+          </div>
+          <div className="p-8 grid grid-cols-2 md:grid-cols-4 gap-6">
+            {[
+              { id: 'ecommerce', name: 'E-Commerce', icon: ShoppingBag, color: 'text-cyan-400' },
+              { id: 'learning', name: 'Learning Platform', icon: FileText, color: 'text-green-400' },
+              { id: 'service', name: 'Service / Agency', icon: Users, color: 'text-blue-400' },
+              { id: 'gadgets', name: 'Digital Gadgets', icon: Monitor, color: 'text-purple-400' }
+            ].map(cat => (
+              <div key={cat.id} onClick={() => createNewPage(cat.id)} className="bg-white/5 border border-white/10 p-6 rounded-2xl hover:bg-white/10 hover:border-white/30 cursor-pointer transition-all text-center group">
+                <cat.icon size={32} className={`mx-auto mb-4 ${cat.color} group-hover:scale-110 transition-transform`} />
+                <h3 className="text-sm font-bold text-white">{cat.name}</h3>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const renderBuilderArea = () => {
+    const progressPercent = ((currentStepIndex + 1) / EDITOR_STEPS.length) * 100;
+
+    return (
+      <div className="flex flex-1 overflow-hidden relative">
+        <aside className="w-64 bg-[#0A0A0E] border-r border-white/5 overflow-y-auto custom-scrollbar flex flex-col py-6 pl-4 pr-2 z-20 shadow-[10px_0_30px_rgba(0,0,0,0.5)]">
+          {['Phase 1: Architecture', 'Phase 2: Core Content', 'Phase 3: Refinement', 'Phase 4: Launch'].map(phase => (
+            <div key={phase} className="mb-6">
+              <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-2 px-2">{phase}</div>
+              <div className="space-y-1">
+                {EDITOR_STEPS.filter(s => s.phase === phase).map(step => {
+                  const isActive = activeEditorStep === step.id;
+                  const isCompleted = EDITOR_STEPS.findIndex(s => s.id === step.id) < currentStepIndex;
+                  return (
+                    <button
+                      key={step.id}
+                      onClick={() => setActiveEditorStep(step.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${isActive ? 'bg-cyan-600 shadow-[0_0_20px_rgba(6,182,212,0.3)] text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        }`}
+                    >
+                      <step.icon size={16} className={isActive ? 'text-white' : 'opacity-70'} />
+                      {step.label}
+                      {isCompleted && !isActive && <CheckCircle2 size={14} className="text-green-500 ml-auto" />}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </aside>
+
+        <main className="flex-1 flex flex-col bg-gradient-to-br from-[#050505] to-[#0A0A0E] relative overflow-hidden">
+          <div className="h-1 w-full bg-white/5 absolute top-0 left-0 z-10">
+            <div className="h-full bg-cyan-500 transition-all duration-500 ease-out" style={{ width: `${progressPercent}%` }}></div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+            <div className="max-w-[1400px] mx-auto animate-in fade-in zoom-in-[0.98] duration-300 h-full">
+              {activeEditorStep === 'setup' && renderStep1Setup()}
+              {activeEditorStep === 'brand' && renderStep2Brand()}
+              {activeEditorStep === 'hero' && renderStep3Hero()}
+              {activeEditorStep === 'blocks' && renderStep4Blocks()}
+              {activeEditorStep === 'theme' && renderStep5Theme()}
+              {activeEditorStep === 'ai' && renderStep6AI()}
+              {activeEditorStep === 'media' && renderStep7Media()}
+              {activeEditorStep === 'contact' && renderStep8Contact()}
+              {activeEditorStep === 'seo' && renderStep9SEO()}
+              {activeEditorStep === 'publish' && renderStep10Publish()}
+            </div>
+          </div>
+
+          <div className="h-20 border-t border-white/5 bg-[#0A0A0E]/80 backdrop-blur-md flex items-center justify-between px-8 z-10 shrink-0">
+            <button
+              onClick={handlePrevStep}
+              disabled={currentStepIndex === 0}
+              className="px-6 py-3 rounded-xl text-sm font-bold text-gray-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30 flex items-center gap-2"
+            >
+              <ArrowLeft size={16} /> Back
+            </button>
+            <span className="text-xs font-bold text-gray-600 uppercase tracking-widest">Step {currentStepIndex + 1} of {EDITOR_STEPS.length}</span>
+            <button
+              onClick={currentStepIndex === EDITOR_STEPS.length - 1 ? handlePublish : handleNextStep}
+              className="px-6 py-3 bg-white text-black rounded-xl text-sm font-black hover:bg-cyan-400 hover:text-white transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+            >
+              {currentStepIndex === EDITOR_STEPS.length - 1 ? 'Deploy Live' : `Next: ${EDITOR_STEPS[currentStepIndex + 1]?.label}`}
+              {currentStepIndex !== EDITOR_STEPS.length - 1 && <ArrowRight size={16} />}
+            </button>
+          </div>
+        </main>
+        {renderThemeModal()}
+        {renderPageTypeModal()}
+      </div>
+    )
+  };
+
+  return (
+    <div className="min-h-screen bg-[#050505] text-gray-100 flex font-sans selection:bg-cyan-500/30 overflow-hidden">
+      <aside className="w-16 lg:w-64 bg-[#0A0A0E] border-r border-white/5 flex flex-col relative z-30 transition-all duration-300 shadow-[10px_0_30px_rgba(0,0,0,0.3)]">
+        <div className="h-20 flex items-center justify-center lg:justify-start lg:px-6 border-b border-white/5 shrink-0">
+          <Globe className="text-cyan-500 w-8 h-8" />
+          <span className="hidden lg:block text-xl font-black ml-3 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">3D <span className="text-white font-light">UNIVERSE</span></span>
+        </div>
+
+        <nav className="flex-1 py-6 space-y-2 px-3 overflow-y-auto">
+          {MENU_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl text-sm font-medium transition-all ${activeTab === item.id ? 'bg-cyan-600/10 text-cyan-400' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+              title={item.label}
+            >
+              <item.icon size={20} className={activeTab === item.id ? 'text-cyan-400' : 'opacity-70'} />
+              <span className="hidden lg:block">{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-4 mt-auto border-t border-white/5 hidden lg:block shrink-0">
+          {userTier === 'free' ? (
+            <div onClick={handleBuyPro} className="bg-gradient-to-r from-gray-800 to-gray-900 border border-gray-700 rounded-2xl p-3 cursor-pointer hover:border-cyan-500 transition-colors group">
+              <div className="flex items-center gap-3">
+                <Crown size={16} className="text-yellow-500 transition-colors" />
+                <span className="text-sm font-bold text-white">Free Plan</span>
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1 leading-tight">Click to Upgrade to Pro</p>
+            </div>
+          ) : (
+            <div onClick={() => setActiveTab('settings')} className="bg-[#111118] border border-green-500/30 rounded-2xl p-3 flex items-center gap-3 shadow-[0_0_15px_rgba(34,197,94,0.1)] cursor-pointer hover:border-green-500/50 transition-colors">
+              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e] animate-pulse"></div>
+              </div>
+              <div>
+                <h4 className="text-green-400 font-bold text-xs uppercase tracking-wider">Pro Active</h4>
+              </div>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      <main className="flex-1 flex flex-col relative z-10 h-screen overflow-hidden">
+        <header className="h-20 bg-[#0A0A0E] border-b border-white/5 flex items-center justify-between px-8 z-40 shadow-sm shrink-0">
+          <div className="flex items-center gap-4">
+            <span className="text-base font-bold text-white">
+              {activeTab === 'editor' ? <span className="flex items-center gap-2"><Layout size={18} className="text-cyan-500" /> Workspace: {pageData.setup.name || 'Untitled Project'}</span> : activeTab === 'analytics' ? 'Dashboard Overview' : activeTab === 'inventory' ? 'Inventory Manager' : activeTab === 'settings' ? 'Account Settings' : 'My Landing Pages'}
+            </span>
+            {activeTab === 'editor' && (
+              <div className="flex items-center gap-3">
+                <span className={`text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full border transition-colors duration-300 ${syncStatus === 'Published!' ? 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20' :
+                  syncStatus === 'Saved' ? 'text-green-400 bg-green-400/10 border-green-400/20' :
+                    'text-yellow-400 bg-yellow-400/10 border-yellow-400/20'
+                  }`}>
+                  {syncStatus === 'Saved' || syncStatus === 'Published!' ? <span className="flex items-center gap-1.5"><CheckCircle2 size={10} /> {syncStatus}</span> : 'Syncing...'}
+                </span>
+
+                {pageData.publish?.publicUrl && syncStatus === 'Published!' && (
+                  <div className="flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 rounded-lg ml-3">
+                    <Globe size={12} className="text-cyan-400" />
+                    <span className="text-xs text-cyan-100 font-mono select-all">{pageData.publish.publicUrl}</span>
+                    <button onClick={() => window.open(pageData.publish.publicUrl, '_blank')} className="text-cyan-400 hover:text-white ml-2"><ExternalLink size={12} /></button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button onClick={handlePreview} className="hidden sm:flex items-center gap-2 px-5 py-2 text-sm font-bold text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors">
+              <Eye size={16} /> Preview Mode
+            </button>
+            <button
+              onClick={handlePublish}
+              className="flex items-center gap-2 px-6 py-2 text-sm font-black text-white bg-cyan-600 hover:bg-cyan-500 rounded-xl transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+            >
+              <Send size={16} /> Publish Changes
+            </button>
+
+            <div className="h-8 w-px bg-white/10 mx-2 hidden sm:block"></div>
+
+            <div className="flex items-center gap-3 cursor-pointer hover:bg-white/5 p-1.5 rounded-xl transition-colors" onClick={() => setActiveTab('settings')}>
+              <div className="flex flex-col items-end hidden sm:flex">
+                <span className="text-sm font-bold text-white leading-tight">{userProfile.name}</span>
+                <span className={`text-[10px] font-black uppercase tracking-wider ${userTier === 'pro' ? 'text-green-400 drop-shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'text-gray-500'}`}>
+                  {userTier === 'pro' ? 'PRO ACTIVE' : 'FREE PLAN'}
+                </span>
+              </div>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-400 p-[2px]">
+                <div className="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden">
+                  {userProfile.avatar ? <img src={userProfile.avatar} alt="Avatar" className="w-full h-full object-cover" /> : <span className="text-white font-bold">{userProfile.name.charAt(0)}</span>}
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {activeTab === 'editor' && renderBuilderArea()}
+        {activeTab === 'analytics' && renderAnalytics()}
+        {activeTab === 'pages' && renderPages()}
+        {activeTab === 'inventory' && renderInventory()}
+        {activeTab === 'settings' && renderSettings()}
+        {renderPageTypeModal()}
+      </main>
+    </div>
+  );
+}

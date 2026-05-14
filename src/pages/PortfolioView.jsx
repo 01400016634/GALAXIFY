@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { supabase } from '../services/supabase';
 import { ExternalLink, Mail, MapPin, Calendar, Award, BookOpen, Briefcase, GraduationCap } from 'lucide-react';
 import GalaxyTheme from '../themes/GalaxyTheme';
 import LavaTheme from '../themes/LavaTheme';
@@ -17,12 +16,17 @@ const PortfolioView = () => {
   useEffect(() => {
     const fetchPortfolio = async () => {
       try {
-        // The username from URL is used as the document ID (slug)
-        const docRef = doc(db, 'portfolios', username);
-        const docSnap = await getDoc(docRef);
+        // Fetch from Supabase Postgres database
+        const { data: fetchedData, error: fetchError } = await supabase
+          .from('landing_pages')
+          .select('page_data')
+          .eq('id', username)
+          .single();
 
-        if (docSnap.exists()) {
-          setData(docSnap.data());
+        if (fetchError) throw fetchError;
+
+        if (fetchedData && fetchedData.page_data) {
+          setData(fetchedData.page_data);
         } else {
           setError('Portfolio not found');
         }
@@ -58,16 +62,20 @@ const PortfolioView = () => {
   if (!data) return null;
 
   // Determine which theme to render based on the data
-  const theme = (data.theme || 'space').toLowerCase();
+  const theme = (data.theme?.themeId || data.setup?.themeId || 'space').toLowerCase();
 
   switch (theme) {
+    case 'theme-2':
     case 'lava':
       return <LavaTheme portfolioData={data} />;
+    case 'theme-3':
     case 'forest':
       return <ForestTheme portfolioData={data} />;
+    case 'theme-4':
     case 'cyberpunk':
     case 'neon':
       return <NeonTechTheme portfolioData={data} />;
+    case 'theme-1':
     case 'space':
     case 'galaxy':
     default:

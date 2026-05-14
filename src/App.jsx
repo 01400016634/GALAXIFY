@@ -1,78 +1,36 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Navbar from './components/layout/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import PortfolioView from './pages/PortfolioView';
-import Pricing from './pages/Pricing';
-import DashboardLayout from './components/layout/DashboardLayout';
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import { AuthProvider } from './context/AuthContext';
-import Navbar from './components/layout/Navbar';
-import ProfileSettings from './pages/ProfileSettings';
 
-// 🛡️ OWNER CMS Imports
-import AdminLogin from './pages/AdminLogin';
-import OwnerCMS from './pages/OwnerCMS';
+const ProtectedRoute = ({ children }) => {
+  const { currentUser, loading } = useAuth();
 
-// ==========================================
-// 🔐 CUSTOM ADMIN PROTECTOR
-// ==========================================
-const AdminRoute = ({ children }) => {
-  const hasToken = localStorage.getItem('adminToken');
-  // If no token is found, kick them back to the /admin login page
-  if (!hasToken) {
-    return <Navigate to="/admin" replace />;
+  // 🚀 IF LOADING, SHOW NOTHING OR A LOADER (Prevents redirect loop)
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <p className="text-cyan-500 animate-pulse">LOADING GALAXIFY...</p>
+      </div>
+    );
   }
+
+  if (!currentUser) return <Navigate to="/login" replace />;
   return children;
-};
-
-const Navigation = () => {
-  const location = useLocation();
-
-  // Hide Navbar on specialized routes so they take up the full screen
-  if (
-    location.pathname.startsWith('/dashboard') ||
-    location.pathname.startsWith('/u/') ||
-    location.pathname === '/owner-panel' ||
-    location.pathname === '/admin' // Hide navbar on admin login screen too
-  ) {
-    return null;
-  }
-  return <Navbar />;
 };
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <Navigation />
-
+        <Navbar />
         <Routes>
-          {/* Public Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
-
-          {/* Protected User Dashboard Routes (Uses Firebase) */}
-          <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-            <Route index element={<Dashboard />} />
-            <Route path="settings" element={<ProfileSettings />} />
-            <Route path="upgrade" element={<Pricing />} />
-          </Route>
-
-          {/* 🔐 NEW: The Admin Login Screen */}
-          <Route path="/admin" element={<AdminLogin />} />
-
-          {/* 🛡️ UPDATED: OWNER CMS Route (Uses AdminRoute instead of ProtectedRoute) */}
-          <Route path="/owner-panel" element={
-            <AdminRoute>
-              <OwnerCMS />
-            </AdminRoute>
-          } />
-
-          {/* Dynamic Public Portfolio Route */}
-          <Route path="/u/:username" element={<PortfolioView />} />
-
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         </Routes>
       </Router>
     </AuthProvider>

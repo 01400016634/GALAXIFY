@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { db, storage } from '../services/firebase';
+import { db, storage } from '../services/supabase';
 import { generateExperience, generateResearchAnalysis } from '../services/gemini';
 import PDFUploader from '../components/dashboard/PDFUploader';
 import {
@@ -47,7 +47,7 @@ const Dashboard = () => {
     publicResumeUrl: null,
     isDraft: true,
     theme: 'space',
-    publicUrl: 'https://3duniverse.com/p/your-name',
+    publicUrl: 'https://galaxifyai.com/p/your-name',
     isPro: false,
     customDomain: ''
   });

@@ -4,37 +4,78 @@ import {
   LayoutDashboard, Users, Palette, Megaphone,
   CreditCard, Settings, ShieldAlert, LogOut,
   Activity, Search, MoreVertical, UploadCloud,
-  Edit, Trash2, DollarSign, TrendingUp, Eye, Image as ImageIcon
+  Edit, Trash2, DollarSign, TrendingUp, Eye, Image as ImageIcon,
+  Globe, Layout, Video, Layers, PlusCircle, ListPlus, Type, Save
 } from 'lucide-react';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const OwnerCMS = () => {
   const [activeTab, setActiveTab] = useState('analytics');
   const [loading, setLoading] = useState(true);
+  const [showThemeModal, setShowThemeModal] = useState(false);
 
   // REAL-TIME STATE
   const [data, setData] = useState({
     metrics: {},
     users: [],
+    projects: [],
     themes: [],
     announcements: [],
-    settings: {},
-    revenueData: [] // For Recharts
+    settings: {
+      siteName: 'GALAXIFY AI',
+      heroTagline: 'Build immersive web experiences',
+      maintenanceMode: false,
+      homepageSections: ['Features', 'Pricing', 'Themes', 'FAQ'],
+      userDashboardTabs: ['Analytics', 'Pages', 'Editor', 'Inventory', 'Settings']
+    },
+    // DYNAMIC WORKFLOW CONTROLLER FOR USER DASHBOARD
+    workflowConfig: [
+      {
+        phase: 'Phase 1: Architecture',
+        steps: [
+          { id: 'setup', title: 'Project Setup', description: 'Define the core architecture and goal.', fields: ['Project Name', 'Business Category', 'Website Goal', 'Target Audience'] },
+          { id: 'brand', title: 'Brand Identity', description: 'Configure logos, colors, and typography globally.', fields: ['Logo Upload', 'Brand Name', 'Tagline', 'About (Short)', 'Primary Color', 'Font Style'] }
+        ]
+      },
+      {
+        phase: 'Phase 2: Core Content',
+        steps: [
+          { id: 'hero', title: 'Hero Section', description: 'Hook your visitors instantly.', fields: ['Hero Headline', 'Sub-headline', 'CTA Text', 'CTA Link', 'Hero Media Background'] },
+          { id: 'blocks', title: 'Section Builder', description: 'Drag, drop, and configure modular sections.', fields: ['Block Type', 'Block Title', 'Layout Configuration'] }
+        ]
+      },
+      {
+        phase: 'Phase 3: Refinement',
+        steps: [
+          { id: 'theme', title: 'Theme & Animations', description: 'Control the global structure and 3D physics.', fields: ['Theme Selection', 'Navigation Style', 'Content Width', 'Animation Intensity', 'Particle Engine'] },
+          { id: 'ai', title: 'AI Content Optimizer', description: 'Let AI write high-converting copy.', fields: ['Tone of Voice', 'Hero Copy Gen', 'Feature Blocks Gen'] },
+          { id: 'media', title: 'Media Manager', description: 'Manage 3D models (GLB), videos, and images.', fields: ['File Uploader', 'Media Library'] },
+          { id: 'contact', title: 'Contact & Socials', description: 'Configure quick-access floating buttons.', fields: ['Support Email', 'Phone Number', 'WhatsApp Number', 'Active Social Modules'] }
+        ]
+      },
+      {
+        phase: 'Phase 4: Launch',
+        steps: [
+          { id: 'seo', title: 'SEO & Performance', description: 'Ensure your page ranks high.', fields: ['SEO Title Tag', 'Meta Description', 'Google Analytics ID'] },
+          { id: 'publish', title: 'Publish Settings', description: 'Configure domain and push to edge network.', fields: ['Custom Domain', 'Page Visibility', 'Access Password'] }
+        ]
+      }
+    ],
+    revenueData: []
   });
 
-  // 🔴 CORE DATA FETCH (CACHE DISABLED)
+  // 1. DATA FETCHING FUNCTION
   const fetchDashboard = async () => {
     try {
-      // Add a timestamp query to physically force the browser to see it as a "new" request
       const timestamp = new Date().getTime();
       const response = await fetch(`http://localhost:5001/api/owner/dashboard?t=${timestamp}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
-          'Cache-Control': 'no-cache'
-        },
-        cache: 'no-store' // Strict command to bypass browser cache
+          'Expires': '0'
+        }
       });
 
       const result = await response.json();
@@ -44,16 +85,24 @@ const OwnerCMS = () => {
         { name: 'Week 3', revenue: 450 }, { name: 'Week 4', revenue: 900 }
       ];
 
-      setData({ ...result, revenueData: safeRevenue });
+      setData(prev => ({
+        ...prev,
+        ...result,
+        revenueData: safeRevenue,
+        settings: { ...prev.settings, ...result.settings },
+        workflowConfig: result.workflowConfig || prev.workflowConfig // Load from DB if exists
+      }));
       setLoading(false);
     } catch (error) {
       console.error("Failed to load Master DB", error);
       setLoading(false);
     }
   };
-  useEffect(() => { fetchDashboard(); }, []);
 
-  // 🔴 REAL-TIME ACTIONS
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
     window.location.href = '/admin';
@@ -79,41 +128,113 @@ const OwnerCMS = () => {
     fetchDashboard();
   };
 
-  const handleCreateBroadcast = async (e) => {
+  const handleCreateTheme = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const payload = {
-      title: formData.get('title'),
-      type: formData.get('type'),
-      message: formData.get('message')
+      name: formData.get('name'),
+      category: formData.get('category'),
+      isPremium: formData.get('isPremium') === 'on',
+      supportsVideoBg: formData.get('supportsVideoBg') === 'on'
     };
 
     try {
-      await fetch('http://localhost:5001/api/owner/announcements', {
+      await fetch('http://localhost:5001/api/owner/themes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` },
         body: JSON.stringify(payload)
       });
-      e.target.reset();
-      fetchDashboard(); // Instantly refresh UI
-    } catch (err) { alert("Failed to deploy broadcast"); }
+      setShowThemeModal(false);
+      fetchDashboard();
+    } catch (err) {
+      alert("Failed to save theme.");
+    }
   };
 
-  const handleDeleteBroadcast = async (id) => {
-    await fetch(`http://localhost:5001/api/owner/announcements/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
-    });
-    fetchDashboard();
+  // ==========================================
+  // 🧩 DYNAMIC WORKFLOW INTERACTIVE HANDLERS
+  // ==========================================
+  const setWorkflowConfig = (newConfig) => {
+    setData(prev => ({ ...prev, workflowConfig: newConfig }));
   };
+
+  // Phases
+  const handleAddPhase = () => {
+    const phaseName = prompt("Enter new Phase name (e.g., Phase 5: Post-Launch):");
+    if (!phaseName) return;
+    setWorkflowConfig([...data.workflowConfig, { phase: phaseName, steps: [] }]);
+  };
+
+  const handleEditPhase = (pIndex) => {
+    const newName = prompt("Edit Phase name:", data.workflowConfig[pIndex].phase);
+    if (!newName) return;
+    const newConfig = [...data.workflowConfig];
+    newConfig[pIndex].phase = newName;
+    setWorkflowConfig(newConfig);
+  };
+
+  // Steps
+  const handleAddStep = (pIndex) => {
+    const stepTitle = prompt("Enter Step title (e.g., Email Automation):");
+    if (!stepTitle) return;
+    const newConfig = [...data.workflowConfig];
+    newConfig[pIndex].steps.push({ id: `step_${Date.now()}`, title: stepTitle, description: 'New custom step.', fields: [] });
+    setWorkflowConfig(newConfig);
+  };
+
+  const handleEditStep = (pIndex, sIndex) => {
+    const stepTitle = prompt("Edit Step title:", data.workflowConfig[pIndex].steps[sIndex].title);
+    if (!stepTitle) return;
+    const newConfig = [...data.workflowConfig];
+    newConfig[pIndex].steps[sIndex].title = stepTitle;
+    setWorkflowConfig(newConfig);
+  };
+
+  const handleDeleteStep = (pIndex, sIndex) => {
+    if (!window.confirm("Are you sure you want to delete this Step?")) return;
+    const newConfig = [...data.workflowConfig];
+    newConfig[pIndex].steps.splice(sIndex, 1);
+    setWorkflowConfig(newConfig);
+  };
+
+  // Fields
+  const handleAddField = (pIndex, sIndex) => {
+    const fieldName = prompt("Enter new Input Field name (e.g., Facebook Pixel ID):");
+    if (!fieldName) return;
+    const newConfig = [...data.workflowConfig];
+    newConfig[pIndex].steps[sIndex].fields.push(fieldName);
+    setWorkflowConfig(newConfig);
+  };
+
+  const handleDeleteField = (pIndex, sIndex, fIndex) => {
+    if (!window.confirm("Remove this field from the User Dashboard?")) return;
+    const newConfig = [...data.workflowConfig];
+    newConfig[pIndex].steps[sIndex].fields.splice(fIndex, 1);
+    setWorkflowConfig(newConfig);
+  };
+
+  // Save to DB
+  const handleSaveWorkflowToDB = async () => {
+    try {
+      await fetch('http://localhost:5001/api/owner/workflow', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` },
+        body: JSON.stringify({ workflowConfig: data.workflowConfig })
+      });
+      alert("🚀 Workflow Engine Saved Successfully! Users will now see these changes in their dashboard.");
+    } catch (err) {
+      alert("Error connecting to backend database. Are you sure your backend supports /api/owner/workflow?");
+    }
+  };
+
 
   const menuItems = [
     { id: 'analytics', icon: <LayoutDashboard size={18} />, label: 'Analytics' },
     { id: 'users', icon: <Users size={18} />, label: 'User Hub' },
+    { id: 'projects', icon: <Globe size={18} />, label: 'Project Hub' },
+    { id: 'workflow', icon: <ListPlus size={18} />, label: 'Workflow Builder' },
     { id: 'themes', icon: <Palette size={18} />, label: 'Theme Engine' },
-    { id: 'offers', icon: <Megaphone size={18} />, label: 'Broadcasts' },
     { id: 'subscriptions', icon: <CreditCard size={18} />, label: 'Billing' },
-    { id: 'media', icon: <UploadCloud size={18} />, label: 'Media Vault' },
     { id: 'settings', icon: <Settings size={18} />, label: 'Global Config' }
   ];
 
@@ -128,7 +249,7 @@ const OwnerCMS = () => {
   return (
     <div className="min-h-screen w-full bg-[#030303] text-slate-200 flex font-sans overflow-hidden selection:bg-[#ff003c]/30">
 
-      {/* SIDEBAR */}
+      {/* 🔴 LEFT SIDEBAR */}
       <motion.aside initial={{ x: -300 }} animate={{ x: 0 }} className="w-72 border-r border-white/5 bg-black/40 backdrop-blur-xl flex flex-col relative z-20">
         <div className="p-8 border-b border-white/5 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#ff003c] to-transparent opacity-50" />
@@ -138,7 +259,7 @@ const OwnerCMS = () => {
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
           {menuItems.map((item) => (
-            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden ${activeTab === item.id ? 'text-white' : 'text-slate-500 hover:text-slate-200 hover:bg-white/5'}`}>
+            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden ${activeTab === item.id ? 'text-white bg-white/5' : 'text-slate-500 hover:text-slate-200 hover:bg-white/5'}`}>
               {activeTab === item.id && <motion.div layoutId="activeTabIndicator" className="absolute inset-0 bg-gradient-to-r from-[#ff003c]/20 to-transparent border-l-2 border-[#ff003c]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} />}
               <span className="relative z-10 flex items-center gap-4"><span className={activeTab === item.id ? 'text-[#ff003c]' : ''}>{item.icon}</span>{item.label}</span>
             </button>
@@ -152,23 +273,21 @@ const OwnerCMS = () => {
         </div>
       </motion.aside>
 
-      {/* MAIN CONTENT AREA */}
+      {/* 🔴 MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col relative h-screen overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#ff003c] opacity-[0.03] blur-[120px] pointer-events-none" />
 
+        {/* TOP HEADER */}
         <header className="px-10 py-6 border-b border-white/5 flex justify-between items-center bg-black/20 backdrop-blur-md z-10">
           <h2 className="text-3xl font-bold text-white capitalize tracking-wide">{activeTab.replace('-', ' ')}</h2>
           <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-              <input type="text" placeholder="Search Database..." className="bg-white/5 border border-white/10 rounded-full pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-[#ff003c]/50 text-white w-64 transition-all" />
-            </div>
             <div className="flex items-center gap-2 text-[10px] text-green-500 font-mono bg-green-500/10 px-4 py-2 rounded-full border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.1)]">
               <Activity size={12} className="animate-pulse" /> DATABASE SECURE
             </div>
           </div>
         </header>
 
+        {/* DYNAMIC TAB CONTENT */}
         <div className="flex-1 p-10 overflow-y-auto custom-scrollbar relative z-10">
           <AnimatePresence mode="wait">
 
@@ -191,24 +310,6 @@ const OwnerCMS = () => {
                       <p className="text-3xl font-bold text-white mt-1">{stat.value}</p>
                     </div>
                   ))}
-                </div>
-                <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 h-[400px]">
-                  <h3 className="text-white font-bold mb-6 flex items-center gap-2"><Activity className="text-[#ff003c]" size={18} /> Live Metrics Overview</h3>
-                  <ResponsiveContainer width="100%" height="85%">
-                    <AreaChart data={data.revenueData}>
-                      <defs>
-                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ff003c" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#ff003c" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                      <XAxis dataKey="name" stroke="#ffffff50" axisLine={false} tickLine={false} />
-                      <YAxis stroke="#ffffff50" axisLine={false} tickLine={false} tickFormatter={(value) => `$${value}`} />
-                      <Tooltip contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #ffffff20', borderRadius: '8px' }} />
-                      <Area type="monotone" dataKey="revenue" stroke="#ff003c" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
                 </div>
               </motion.div>
             )}
@@ -258,133 +359,201 @@ const OwnerCMS = () => {
               </motion.div>
             )}
 
+            {/* 🌐 PROJECT HUB MODULE */}
+            {activeTab === 'projects' && (
+              <motion.div key="projects" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
+                <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
+                  <h3 className="text-white font-bold text-xl mb-6">User Landing Pages</h3>
+                  <table className="w-full text-left">
+                    <thead className="bg-white/5 border-b border-white/10 text-xs text-slate-400 uppercase">
+                      <tr><th className="p-4">Project Name</th><th className="p-4">Owner ID</th><th className="p-4">Status</th><th className="p-4 text-right">Action</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-white/5 hover:bg-white/5">
+                        <td className="p-4 font-bold text-white">Sample E-Commerce Store</td>
+                        <td className="p-4 text-slate-500">usr_12345</td>
+                        <td className="p-4"><span className="text-green-400 bg-green-500/10 px-2 py-1 rounded text-xs">Published</span></td>
+                        <td className="p-4 text-right"><button className="text-red-500 hover:text-red-400"><Trash2 size={16} /></button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
+            )}
+
+            {/* 🧩 NEW: DYNAMIC WORKFLOW & FORM BUILDER MODULE */}
+            {activeTab === 'workflow' && (
+              <motion.div key="workflow" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
+                <div className="flex justify-between items-center bg-black/40 border border-white/10 p-6 rounded-2xl backdrop-blur-xl">
+                  <div>
+                    <h3 className="text-white font-bold text-xl flex items-center gap-2"><Layers className="text-[#ff003c]" /> User Form & Workflow Engine</h3>
+                    <p className="text-slate-400 text-sm mt-1">Dynamically manage the Sections, Steps, and Text Fields inside the user's Page Builder.</p>
+                  </div>
+                  <div className="flex gap-4">
+                    <button onClick={handleAddPhase} className="bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-xl text-sm font-bold border border-white/10 flex items-center gap-2 transition-all">
+                      <PlusCircle size={18} /> Add Phase
+                    </button>
+                    <button onClick={handleSaveWorkflowToDB} className="bg-gradient-to-r from-[#ff003c] to-red-800 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-[0_0_15px_rgba(255,0,60,0.4)] flex items-center gap-2 transition-all hover:scale-105">
+                      <Save size={18} /> Save & Deploy Workflow
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6">
+                  {data.workflowConfig?.map((phaseObj, pIndex) => (
+                    <div key={pIndex} className="bg-black/40 border border-white/10 rounded-2xl overflow-hidden shadow-xl">
+
+                      {/* Phase Header */}
+                      <div className="bg-white/5 border-b border-white/10 p-4 flex justify-between items-center">
+                        <h4 className="text-[#ff003c] font-black uppercase tracking-widest text-sm">{phaseObj.phase}</h4>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleEditPhase(pIndex)} className="text-slate-400 hover:text-white flex items-center gap-1 text-xs bg-black/50 px-3 py-1.5 rounded-lg border border-white/10 transition-colors"><Edit size={12} /> Edit Name</button>
+                          <button onClick={() => handleAddStep(pIndex)} className="text-slate-400 hover:text-white flex items-center gap-1 text-xs bg-black/50 px-3 py-1.5 rounded-lg border border-white/10 transition-colors"><PlusCircle size={12} /> Add Step</button>
+                        </div>
+                      </div>
+
+                      {/* Steps inside Phase */}
+                      <div className="p-4 grid grid-cols-1 xl:grid-cols-2 gap-4">
+                        {phaseObj.steps.map((step, sIndex) => (
+                          <div key={sIndex} className="bg-black/50 border border-white/10 p-5 rounded-xl hover:border-white/20 transition-colors relative group">
+
+                            {/* Step Actions */}
+                            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => handleEditStep(pIndex, sIndex)} className="text-blue-400 hover:text-blue-300 bg-blue-400/10 p-1.5 rounded"><Edit size={14} /></button>
+                              <button onClick={() => handleDeleteStep(pIndex, sIndex)} className="text-red-500 hover:text-red-400 bg-red-500/10 p-1.5 rounded"><Trash2 size={14} /></button>
+                            </div>
+
+                            <h5 className="text-white font-bold text-lg mb-1 pr-16">{step.title}</h5>
+                            <p className="text-xs text-slate-400 mb-4">{step.description}</p>
+
+                            {/* Fields Configuration */}
+                            <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                              <h6 className="text-[10px] text-slate-500 uppercase font-bold mb-2 flex items-center gap-1"><Type size={10} /> Input Fields Displayed</h6>
+                              <div className="flex flex-wrap gap-2">
+                                {step.fields.map((field, fIndex) => (
+                                  <span key={fIndex} className="bg-black/80 border border-white/10 text-slate-300 text-xs px-2 py-1 rounded flex items-center gap-1">
+                                    {field}
+                                    <button onClick={() => handleDeleteField(pIndex, sIndex, fIndex)} className="text-red-500/50 hover:text-red-500 ml-1 transition-colors">×</button>
+                                  </span>
+                                ))}
+                                <button onClick={() => handleAddField(pIndex, sIndex)} className="bg-[#ff003c]/10 border border-[#ff003c]/30 text-[#ff003c] text-xs px-2 py-1 rounded hover:bg-[#ff003c]/20 transition-colors">+ Add Field</button>
+                              </div>
+                            </div>
+
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
             {/* 🎨 THEME ENGINE MODULE */}
             {activeTab === 'themes' && (
               <motion.div key="themes" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
                 <div className="flex justify-between items-center bg-black/40 border border-white/10 p-6 rounded-2xl backdrop-blur-xl">
                   <div>
                     <h3 className="text-white font-bold text-xl">Theme Database</h3>
-                    <p className="text-slate-400 text-sm">Manage portfolio templates and access levels.</p>
+                    <p className="text-slate-400 text-sm">Manage portfolio templates and video background support.</p>
                   </div>
-                  <button className="bg-[#ff003c] hover:bg-red-700 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-[0_0_15px_rgba(255,0,60,0.4)] flex items-center gap-2 transition-all">
-                    <UploadCloud size={18} /> Upload New Theme
+                  <button onClick={() => setShowThemeModal(true)} className="bg-[#ff003c] hover:bg-red-700 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-[0_0_15px_rgba(255,0,60,0.4)] flex items-center gap-2 transition-all">
+                    <UploadCloud size={18} /> Add / Update Theme
                   </button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-6">
-                  {data.themes?.length > 0 ? data.themes.map((theme) => (
-                    <div key={theme._id} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden group">
-                      <div className="h-40 bg-gradient-to-br from-slate-800 to-black relative flex items-center justify-center">
-                        <Palette size={48} className="text-white/20 group-hover:scale-110 transition-transform" />
-                        {theme.isPremium && <span className="absolute top-3 right-3 bg-[#ff003c]/20 text-[#ff003c] border border-[#ff003c]/50 text-[10px] font-bold px-2 py-1 rounded">PREMIUM</span>}
-                      </div>
-                      <div className="p-5">
-                        <h4 className="text-white font-bold text-lg mb-1">{theme.name}</h4>
-                        <p className="text-slate-500 text-xs mb-4">Category: {theme.category || 'General'}</p>
-                        <div className="flex gap-2">
-                          <button className="flex-1 bg-white/10 hover:bg-white/20 text-white py-2 rounded-lg text-xs font-bold transition-colors">Edit Metadata</button>
-                          <button className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors"><Trash2 size={16} /></button>
+                {showThemeModal && (
+                  <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+                    <div className="bg-[#0a0a0a] border border-[#ff003c]/30 rounded-2xl p-6 w-full max-w-md">
+                      <h3 className="text-white font-bold text-xl mb-4">Upload/Edit Theme</h3>
+                      <form onSubmit={handleCreateTheme} className="space-y-4">
+                        <input type="text" name="name" placeholder="Theme Name" className="w-full bg-white/5 border border-white/10 rounded p-3 text-white focus:border-[#ff003c]" required />
+                        <input type="text" name="category" placeholder="Category (e.g., Cyber, Minimal)" className="w-full bg-white/5 border border-white/10 rounded p-3 text-white focus:border-[#ff003c]" required />
+                        <label className="flex items-center gap-3 text-white cursor-pointer"><input type="checkbox" name="isPremium" /> Requires PRO Subscription</label>
+                        <label className="flex items-center gap-3 text-white cursor-pointer"><input type="checkbox" name="supportsVideoBg" defaultChecked /> Enable Video Background Upload</label>
+                        <div className="flex justify-end gap-2 mt-6">
+                          <button type="button" onClick={() => setShowThemeModal(false)} className="px-4 py-2 text-slate-400">Cancel</button>
+                          <button type="submit" className="px-4 py-2 bg-[#ff003c] text-white font-bold rounded">Save Theme</button>
                         </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-3 gap-6">
+                  <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden group">
+                    <div className="h-40 bg-gradient-to-br from-slate-800 to-black relative flex items-center justify-center">
+                      <Palette size={48} className="text-white/20 group-hover:scale-110 transition-transform" />
+                      <span className="absolute top-3 right-3 bg-[#ff003c]/20 text-[#ff003c] border border-[#ff003c]/50 text-[10px] font-bold px-2 py-1 rounded">PREMIUM</span>
+                      <span className="absolute top-3 left-3 bg-blue-500/20 text-blue-400 border border-blue-500/50 text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1"><Video size={10} /> VIDEO BG</span>
+                    </div>
+                    <div className="p-5">
+                      <h4 className="text-white font-bold text-lg mb-1">Cyber Neon</h4>
+                      <div className="flex gap-2 mt-4">
+                        <button className="flex-1 bg-white/10 hover:bg-white/20 text-white py-2 rounded-lg text-xs font-bold transition-colors">Edit Metadata</button>
+                        <button className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors"><Trash2 size={16} /></button>
                       </div>
                     </div>
-                  )) : (
-                    <div className="col-span-3 text-center text-slate-500 py-10">No themes active in database.</div>
-                  )}
+                  </div>
                 </div>
               </motion.div>
             )}
 
-            {/* 📢 BROADCASTS MODULE */}
-            {activeTab === 'offers' && (
-              <motion.div key="offers" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="grid grid-cols-2 gap-8">
-                <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
-                  <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Megaphone className="text-[#ff003c]" /> Create Broadcast</h3>
-                  <form onSubmit={handleCreateBroadcast} className="space-y-4">
-                    <div><label className="text-xs text-slate-400 font-bold mb-2 block">Headline</label><input type="text" name="title" required placeholder="e.g. 50% OFF PRO PLAN" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-[#ff003c]/50 outline-none" /></div>
-                    <div><label className="text-xs text-slate-400 font-bold mb-2 block">Broadcast Type</label><select name="type" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none"><option value="offer">Special Offer</option><option value="alert">System Alert</option></select></div>
-                    <div><label className="text-xs text-slate-400 font-bold mb-2 block">Message Body</label><textarea name="message" required rows="4" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none"></textarea></div>
-                    <button type="submit" className="w-full py-4 rounded-xl text-white font-bold tracking-widest bg-gradient-to-r from-[#ff003c] to-red-800 shadow-[0_0_20px_rgba(255,0,60,0.3)] hover:scale-[1.02] transition-transform">DEPLOY TO MAINFRAME</button>
+            {/* ⚙️ GLOBAL CONFIG MODULE */}
+            {activeTab === 'settings' && (
+              <motion.div key="settings" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="grid grid-cols-2 gap-8">
+
+                <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl relative">
+                  <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Settings className="text-[#ff003c]" /> Core Configuration</h3>
+                  <form className="space-y-4">
+                    <div><label className="text-[10px] text-slate-400 uppercase font-bold mb-2 block">System Identity</label><input type="text" defaultValue="GALAXIFY AI" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white" /></div>
+                    <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
+                      <div><h4 className="text-sm font-bold text-white">Maintenance Mode</h4></div>
+                      <input type="checkbox" className="w-5 h-5 accent-[#ff003c]" />
+                    </div>
+                    <button type="submit" className="w-full py-4 rounded-xl text-white font-bold bg-[#ff003c] hover:scale-[1.02] transition-transform">COMMIT SETTINGS</button>
                   </form>
                 </div>
-                <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
-                  <h3 className="text-xl font-bold text-white mb-6">Active Signals</h3>
-                  <div className="space-y-4 overflow-y-auto max-h-[400px] custom-scrollbar pr-2">
-                    {data.announcements?.length > 0 ? data.announcements.map((ann) => (
-                      <div key={ann._id} className="p-4 border border-[#ff003c]/30 bg-[#ff003c]/5 rounded-xl flex justify-between items-start">
-                        <div>
-                          <h4 className="text-[#ff003c] font-bold text-sm mb-1 uppercase">{ann.title}</h4>
-                          <p className="text-xs text-slate-300 mb-2">{ann.message}</p>
-                          <p className="text-[10px] text-slate-500 uppercase">{ann.type} • Active</p>
+
+                <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Globe className="text-[#ff003c]" /> Manage Homepage Sections</h3>
+                  <p className="text-xs text-slate-400 mb-6">Toggle which sections appear on your public landing page.</p>
+                  <div className="space-y-3">
+                    {data.settings?.homepageSections?.map((section, idx) => (
+                      <div key={idx} className="flex justify-between items-center bg-white/5 border border-white/10 p-3 rounded-lg">
+                        <span className="text-white text-sm font-bold">{section}</span>
+                        <div className="flex gap-2">
+                          <input type="checkbox" defaultChecked className="w-4 h-4 accent-green-500 cursor-pointer" />
+                          <button className="text-red-500 hover:text-red-400"><Trash2 size={16} /></button>
                         </div>
-                        <button onClick={() => handleDeleteBroadcast(ann._id)} className="text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
                       </div>
-                    )) : (
-                      <div className="text-slate-500 text-sm text-center py-4">No active broadcasts.</div>
-                    )}
+                    ))}
+                    <button className="text-xs text-[#ff003c] font-bold">+ Add Custom Section</button>
                   </div>
                 </div>
+
+                <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl col-span-2">
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Layout className="text-[#ff003c]" /> User Dashboard Layout Manager</h3>
+                  <p className="text-xs text-slate-400 mb-6">Control exactly what your users see in their dashboard side-menu.</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    {data.settings?.userDashboardTabs?.map((tab, idx) => (
+                      <div key={idx} className="flex justify-between items-center bg-white/5 border border-white/10 p-4 rounded-xl">
+                        <span className="text-white text-sm font-bold">{tab}</span>
+                        <input type="checkbox" defaultChecked className="w-5 h-5 accent-[#ff003c] cursor-pointer" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
               </motion.div>
             )}
 
             {/* 💳 BILLING MODULE */}
             {activeTab === 'subscriptions' && (
-              <motion.div key="subscriptions" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
-                <div className="grid grid-cols-3 gap-6 mb-8">
-                  {['FREE', 'PRO', 'ULTRA'].map((tier, i) => (
-                    <div key={i} className={`p-6 rounded-2xl border ${i === 1 ? 'border-[#ff003c] bg-[#ff003c]/5' : 'border-white/10 bg-black/40'}`}>
-                      <h3 className={`text-lg font-bold mb-2 ${i === 1 ? 'text-[#ff003c]' : 'text-white'}`}>{tier} TIER</h3>
-                      <p className="text-3xl font-bold text-white mb-4">{i === 0 ? '$0' : i === 1 ? '$15' : '$49'}<span className="text-sm text-slate-500 font-normal">/mo</span></p>
-                      <button className="w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white font-bold transition-colors">Edit Plan Data</button>
-                    </div>
-                  ))}
-                </div>
+              <motion.div key="subscriptions" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
                 <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
-                  <h3 className="text-xl font-bold text-white mb-6">Recent Transactions (Stripe)</h3>
-                  <div className="text-slate-500 text-sm text-center py-10 border border-dashed border-white/10 rounded-xl">Stripe API webhook connection required to display live ledger.</div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* 📁 MEDIA VAULT MODULE */}
-            {activeTab === 'media' && (
-              <motion.div key="media" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
-                <div className="border-2 border-dashed border-[#ff003c]/50 rounded-2xl p-12 flex flex-col items-center justify-center bg-gradient-to-b from-[#ff003c]/5 to-transparent hover:bg-[#ff003c]/10 transition-colors cursor-pointer group relative">
-                  <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Upload Media" />
-                  <UploadCloud size={48} className="text-[#ff003c] mb-4 group-hover:scale-110 transition-transform" />
-                  <h3 className="text-white font-bold text-lg mb-2">Upload Asset to Cloudinary</h3>
-                  <p className="text-slate-500 text-sm">Drag and drop images, videos, or 3D models here</p>
-                </div>
-                <div className="grid grid-cols-4 gap-4 mt-8">
-                  <div className="col-span-4 text-center text-slate-500 py-10">No media assets found in database.</div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* ⚙️ SETTINGS MODULE */}
-            {activeTab === 'settings' && (
-              <motion.div key="settings" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="max-w-2xl mx-auto">
-                <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#ff003c] to-transparent opacity-50" />
-                  <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Settings className="text-[#ff003c]" /> Global Configuration</h3>
-                  <form onSubmit={async (e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.target);
-                    const payload = { siteName: formData.get('siteName'), heroTagline: formData.get('heroTagline'), maintenanceMode: formData.get('maintenanceMode') === 'on' };
-                    await fetch('http://localhost:5001/api/owner/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }, body: JSON.stringify(payload) });
-                    alert("CORE SETTINGS UPDATED SUCESSFULLY");
-                    fetchDashboard();
-                  }} className="space-y-6">
-                    <div><label className="text-[10px] text-slate-400 uppercase font-bold mb-2 block">System Identity</label><input type="text" name="siteName" defaultValue={data.settings?.siteName || "GALAXIFY AI"} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-[#ff003c]/50" /></div>
-                    <div><label className="text-[10px] text-slate-400 uppercase font-bold mb-2 block">Primary Directive</label><input type="text" name="heroTagline" defaultValue={data.settings?.heroTagline || "Build immersive web experiences"} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-[#ff003c]/50" /></div>
-                    <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
-                      <div><h4 className="text-sm font-bold text-white">Maintenance Mode</h4><p className="text-xs text-slate-500">Lock down the system.</p></div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" name="maintenanceMode" defaultChecked={data.settings?.maintenanceMode} className="sr-only peer" />
-                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#ff003c]"></div>
-                      </label>
-                    </div>
-                    <button type="submit" className="w-full py-4 rounded-xl text-white font-bold tracking-widest bg-gradient-to-r from-[#ff003c] to-red-800 shadow-[0_0_20px_rgba(255,0,60,0.3)] hover:scale-[1.02] transition-transform">COMMIT CHANGES</button>
-                  </form>
+                  <h3 className="text-xl font-bold text-white mb-6">Stripe Subscription Management</h3>
+                  <div className="text-slate-500 text-sm text-center py-10">Stripe API connection required.</div>
                 </div>
               </motion.div>
             )}

@@ -10,7 +10,7 @@ app.use(express.json());
 
 // 🗄️ MONGODB CONNECTION
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('🟢 3D UNIVERSE: MongoDB Connected'))
+  .then(() => console.log('🟢 GALAXIFY: MongoDB Connected'))
   .catch(err => console.log('🔴 DB Connection Error:', err));
 
 // ==========================================
@@ -41,7 +41,7 @@ const portfolioSchema = new mongoose.Schema({
 const Portfolio = mongoose.model('Portfolio', portfolioSchema);
 
 const settingSchema = new mongoose.Schema({
-  siteName: { type: String, default: '3D UNIVERSE' },
+  siteName: { type: String, default: 'GALAXIFY' },
   heroTagline: { type: String, default: 'Build immersive web experiences' },
   maintenanceMode: { type: Boolean, default: false },
   homeSections: {
