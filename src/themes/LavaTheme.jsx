@@ -1,375 +1,217 @@
-import React, { useRef, useMemo, useState, useEffect } from 'react';
-import { Briefcase, Award, GraduationCap, Linkedin, Github, Mail } from 'lucide-react';
+import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Text, Float, Sparkles, Html, Icosahedron } from '@react-three/drei';
-import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { motion } from 'framer-motion';
+import {
+  Flame, Zap, Globe, Shield,
+  ArrowUpRight, Terminal, Activity, Layers
+} from 'lucide-react';
 import * as THREE from 'three';
 
-// --- HYPER-REALISTIC LAVA PLANET SHADER ---
-const LavaPlanet = ({ isHovered }) => {
-  const materialRef = useRef();
-  const planetRef = useRef();
+// 1. CINEMATIC LAVA SHADER (The "Billion Dollar" Floor)
+const MoltenFlow = () => {
+  const mesh = useRef();
+  // Using a custom shader for that hyper-realistic heat distortion
+  useFrame((state) => {
+    const { clock } = state;
+    mesh.current.material.uniforms.uTime.value = clock.getElapsedTime();
+  });
 
-  // Internal values for smooth transitions
-  const hoverFactor = useRef(0);
-
-  const uniforms = useMemo(() => ({
-    uTime: { value: 0 },
-    uColorRock: { value: new THREE.Color('#0a0a0a') },
-    uColorLava: { value: new THREE.Color('#ff2a00') },
-    uColorLavaHot: { value: new THREE.Color('#ffaa00') },
-    uIntensity: { value: 1.0 } // New uniform for interactivity
+  const shaderArgs = useMemo(() => ({
+    uniforms: {
+      uTime: { value: 0 },
+      uColorA: { value: new THREE.Color('#ff4500') },
+      uColorB: { value: new THREE.Color('#1a0500') }
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      uniform vec3 uColorA;
+      uniform vec3 uColorB;
+      varying vec2 vUv;
+      void main() {
+        float flow = sin(vUv.x * 10.0 + uTime * 0.5) * 0.5 + 0.5;
+        vec3 color = mix(uColorA, uColorB, flow * vUv.y);
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `
   }), []);
 
-  useFrame((state) => {
-    // Smoothly transition the factor (0 to 1) over 10 frames
-    hoverFactor.current = THREE.MathUtils.lerp(hoverFactor.current, isHovered ? 1 : 0, 0.1);
-    
-    if (materialRef.current) {
-      // 1. Speed up time when hovered (lava pulses faster)
-      const speed = 0.15 + (hoverFactor.current * 0.4); 
-      materialRef.current.uniforms.uTime.value += speed * 0.1;
-      
-      // 2. Increase glow intensity when hovered
-      materialRef.current.uniforms.uIntensity.value = 1.0 + (hoverFactor.current * 2.0);
-    }
-    
-    if (planetRef.current) {
-      planetRef.current.rotation.y += 0.001;
-    }
-  });
-
   return (
-    <group ref={planetRef} position={[4, 0, -3]}>
-      <mesh>
-        {/* High detail sphere for vertex displacement */}
-        <sphereGeometry args={[3.5, 128, 128]} />
-        <shaderMaterial
-          ref={materialRef}
-          uniforms={uniforms}
-          vertexShader={`
-            varying vec2 vUv;
-            varying vec3 vNormal;
-            varying float vNoise;
-            uniform float uTime;
-
-            // 3D Simplex Noise function
-            vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
-            vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
-            float snoise(vec3 v){ 
-              const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
-              const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
-              vec3 i  = floor(v + dot(v, C.yyy) );
-              vec3 x0 = v - i + dot(i, C.xxx) ;
-              vec3 g = step(x0.yzx, x0.xyz);
-              vec3 l = 1.0 - g;
-              vec3 i1 = min( g.xyz, l.zxy );
-              vec3 i2 = max( g.xyz, l.zxy );
-              vec3 x1 = x0 - i1 + C.xxx;
-              vec3 x2 = x0 - i2 + C.yyy;
-              vec3 x3 = x0 - D.yyy;
-              i = mod(i, 289.0 ); 
-              vec4 p = permute( permute( permute( i.z + vec4(0.0, i1.z, i2.z, 1.0 )) + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
-              float n_ = 0.142857142857;
-              vec3  ns = n_ * D.wyz - D.xzx;
-              vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
-              vec4 x_ = floor(j * ns.z);
-              vec4 y_ = floor(j - 7.0 * x_ );
-              vec4 x = x_ *ns.x + ns.yyyy;
-              vec4 y = y_ *ns.x + ns.yyyy;
-              vec4 h = 1.0 - abs(x) - abs(y);
-              vec4 b0 = vec4( x.xy, y.xy );
-              vec4 b1 = vec4( x.zw, y.zw );
-              vec4 s0 = floor(b0)*2.0 + 1.0;
-              vec4 s1 = floor(b1)*2.0 + 1.0;
-              vec4 sh = -step(h, vec4(0.0));
-              vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
-              vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
-              vec3 p0 = vec3(a0.xy,h.x);
-              vec3 p1 = vec3(a0.zw,h.y);
-              vec3 p2 = vec3(a1.xy,h.z);
-              vec3 p3 = vec3(a1.zw,h.w);
-              vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
-              p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
-              vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-              m = m * m;
-              return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
-            }
-
-            void main() {
-              vUv = uv;
-              vNormal = normal;
-              
-              // Generate base noise
-              float n = snoise(position * 1.2 + uTime * 0.15);
-              
-              // Create sharp valleys/cracks at noise = 0
-              vNoise = abs(n);
-              
-              // Push vertices OUT where noise > 0, creating deep static fissures
-              vec3 newPos = position + normal * (vNoise * 0.4);
-              
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
-            }
-          `}
-          fragmentShader={`
-            varying vec2 vUv;
-            varying vec3 vNormal;
-            varying float vNoise;
-            
-            uniform vec3 uColorRock;
-            uniform vec3 uColorLava;
-            uniform vec3 uColorLavaHot;
-            uniform float uTime;
-            uniform float uIntensity;
-
-            void main() {
-              float crack = smoothstep(0.01, 0.25, vNoise);
-              float pulse = (sin(uTime * 3.0 - vNoise * 10.0) * 0.5 + 0.5);
-              
-              vec3 lavaBase = mix(uColorLava, uColorLavaHot, pulse);
-              vec3 lava = lavaBase * (4.5 * uIntensity); // Intensity reacts to hover
-              vec3 rock = uColorRock;
-
-              // --- SPECULAR REFINEMENT ---
-              vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
-              vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0));
-              float spec = pow(max(dot(vNormal, normalize(lightDir + viewDir)), 0.0), 32.0);
-
-              vec3 color = mix(lava, rock, crack);
-              
-              // Add sharp glints strictly to the rock surface
-              color += (spec * 0.3 * crack); 
-              
-              gl_FragColor = vec4(color, 1.0);
-            }
-          `}
-        />
-      </mesh>
-    </group>
+    <mesh ref={mesh} rotation={[-Math.PI / 2, 0, 0]} position={[0, -5, 0]}>
+      <planeGeometry args={[100, 100, 32, 32]} />
+      <shaderMaterial args={[shaderArgs]} />
+    </mesh>
   );
 };
 
-// --- SCIENTIFIC HUD ELEMENT ---
-const ScientificHUD = () => {
-  const hudRef = useRef();
+// 2. FLOATING OBSIDIAN DEBRIS
+const ObsidianField = () => {
+  const group = useRef();
+  const count = 40;
+  const positions = useMemo(() => {
+    return Array.from({ length: count }, () => [
+      (Math.random() - 0.5) * 40,
+      (Math.random() - 0.5) * 20,
+      (Math.random() - 0.5) * 30
+    ]);
+  }, []);
+
   useFrame((state) => {
-    hudRef.current.rotation.x += 0.005;
-    hudRef.current.rotation.y += 0.01;
+    group.current.rotation.y += 0.001;
+    group.current.children.forEach((child, i) => {
+      child.position.y += Math.sin(state.clock.elapsedTime + i) * 0.005;
+    });
   });
+
   return (
-    <group ref={hudRef} position={[-4, 1.5, 2]}>
-      <Icosahedron args={[0.5, 1]} wireframe>
-        <meshBasicMaterial color="#ffaa00" transparent opacity={0.6} />
-      </Icosahedron>
-      <Icosahedron args={[0.8, 0]} wireframe>
-        <meshBasicMaterial color="#ff2a00" transparent opacity={0.2} />
-      </Icosahedron>
+    <group ref={group}>
+      {positions.map((pos, i) => (
+        <mesh key={i} position={pos}>
+          <dodecahedronGeometry args={[Math.random() * 0.5, 0]} />
+          <meshStandardMaterial color="#0a0a0a" roughness={0} metalness={1} />
+        </mesh>
+      ))}
     </group>
   );
-};
-
-// --- PARALLAX RIG ---
-const ParallaxRig = ({ children }) => {
-  const rigRef = useRef();
-  useFrame((state) => {
-    if (rigRef.current) {
-      rigRef.current.rotation.y = THREE.MathUtils.lerp(rigRef.current.rotation.y, (state.pointer.x * Math.PI) / 20, 0.05);
-      rigRef.current.rotation.x = THREE.MathUtils.lerp(rigRef.current.rotation.x, (state.pointer.y * Math.PI) / 20, 0.05);
-    }
-  });
-  return <group ref={rigRef}>{children}</group>;
 };
 
 const LavaTheme = ({ portfolioData }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const { brand = {}, hero = {}, blocks = [], media = [], contact = {} } = portfolioData || {};
+  const primaryColor = brand.colors?.[0] || '#ff4500';
 
-  // Safety delay to prevent Vite HMR from crashing the PostProcessing context
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Use a fallback to prevent crashes if personal data is missing
-  const p = portfolioData?.personal || {};
-  const c = portfolioData?.contact || {};
-  const bio = portfolioData?.about || "An experienced scientific professional exploring the depths of the unknown. Leveraging advanced analytics to decode planetary phenomena.";
+  const glassStyle = "bg-black/40 backdrop-blur-2xl border border-orange-500/20 shadow-[0_8px_32px_rgba(255,69,0,0.15)]";
 
   return (
-    <div className="w-full bg-[#020205] text-white font-sans overflow-x-hidden">
-      
-      {/* --- 3D HERO SECTION --- */}
-      <div className="relative w-full h-screen">
-        <Canvas 
-          camera={{ position: [0, 0, 10], fov: 50 }}
-          dpr={[1, 1.5]}
-          gl={{ antialias: false }}
-        >
-          <color attach="background" args={['#030105']} />
-          <fog attach="fog" args={['#030105', 8, 25]} />
-          
-          <ambientLight intensity={0.1} />
-          <directionalLight position={[-10, 10, 5]} color="#ffffff" intensity={2} />
-          <pointLight position={[4, 0, -3]} color="#ff4500" intensity={50} distance={15} />
-          
-          <ParallaxRig>
-            <LavaPlanet isHovered={isHovered} />
-            
-            {/* Floating Deep Space Embers */}
-            <Sparkles count={500} scale={[20, 15, 10]} size={2} speed={0.2} opacity={0.6} color="#ffaa00" position={[0, 0, -5]} />
-            <Sparkles count={150} scale={[10, 10, 10]} size={4} speed={0.5} opacity={1} color="#ff2a00" position={[4, 0, 0]} />
+    <div className="min-h-screen bg-[#0a0500] text-orange-50 font-sans selection:bg-orange-500 overflow-x-hidden relative">
 
-            {/* Professional Floating UI Elements */}
-            <ScientificHUD />
-            
-            <Float speed={2} rotationIntensity={0.2} floatIntensity={0.5}>
-              <Text
-                position={[-2.5, 1.8, 1]}
-                fontSize={1.2}
-                anchorX="center"
-                anchorY="middle"
-                letterSpacing={0.05}
-              >
-                {p.name || "UNNAMED"}
-                <meshPhysicalMaterial 
-                  color="#ffb6c1" 
-                  metalness={0.9} 
-                  roughness={0.3} 
-                  clearcoat={1}
-                />
-              </Text>
-              
-              <Text
-                position={[-2.5, 0.8, 1.2]}
-                fontSize={0.35}
-                color="#ffaa00"
-                anchorX="center"
-                anchorY="middle"
-                letterSpacing={0.2}
-              >
-                {p.designation || "SCIENTIFIC OFFICER"}
-                <meshBasicMaterial color="#ffaa00" toneMapped={false} />
-              </Text>
-            </Float>
-
-            {/* High-end Glassmorphism Bio Panel */}
-            <Html position={[-2.5, -1, 1]} center transform distanceFactor={8} occlude={false}>
-              <div 
-                className="w-[450px] p-8 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.8)] transition-all duration-500 hover:border-[#ffaa00]/40 flex flex-col items-center text-center"
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-              >
-                {p.profilePicture && (
-                  <img 
-                    src={p.profilePicture} 
-                    className="w-20 h-20 rounded-full object-cover border border-[#ffaa00]/50 shadow-[0_0_20px_rgba(255,170,0,0.3)] mb-6" 
-                    alt={p.name} 
-                  />
-                )}
-                <p className="text-slate-300 text-sm leading-relaxed font-light tracking-wide">{bio}</p>
-              </div>
-            </Html>
-          </ParallaxRig>
-          
-          {/* Post-Processing Layer for True HDR Glow */}
-          {mounted && (
-            <EffectComposer disableNormalPass multisampling={0}>
-              <Bloom luminanceThreshold={1} mipmapBlur intensity={1.5} radius={0.4} />
-            </EffectComposer>
-          )}
-          
-          <OrbitControls 
-            enableZoom={false} 
-            enablePan={false} 
-            enableRotate={false} 
-          />
+      {/* 3D VOLCANIC ENVIRONMENT */}
+      <div className="fixed inset-0 z-0">
+        <Canvas camera={{ position: [0, 2, 15], fov: 45 }}>
+          <ambientLight intensity={0.2} />
+          <pointLight position={[10, 10, 10]} intensity={1.5} color={primaryColor} />
+          <spotLight position={[-10, 20, 10]} angle={0.15} penumbra={1} color="#ffaa00" />
+          <MoltenFlow />
+          <ObsidianField />
+          <fog attach="fog" args={['#0a0500', 5, 45]} />
         </Canvas>
-
-        {/* Scroll Indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 text-[#ff4500] animate-bounce pointer-events-none">
-          <p className="text-xs tracking-widest uppercase mb-2 text-center">Scroll</p>
-          <div className="w-px h-8 bg-[#ff4500] mx-auto"></div>
-        </div>
       </div>
 
-      {/* --- CONTENT LAYER --- */}
-      <div className="relative z-10 max-w-5xl mx-auto px-6 py-20 bg-[#020205]">
+      {/* HEAT DISTORTION OVERLAY */}
+      <div className="fixed inset-0 pointer-events-none z-10 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(10,5,0,0.4)_100%)]" />
 
-        {/* Sections Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          
-          {/* Experience - 3D Timeline Style */}
-          {portfolioData?.experience?.length > 0 && (
-            <div className="md:col-span-2 p-10 bg-[#101010]/40 backdrop-blur-3xl border border-[#FF4500]/20 rounded-[2.5rem] shadow-2xl">
-              <h3 className="text-3xl font-black mb-10 flex items-center gap-4 text-[#FF4500]">
-                <Briefcase size={32} /> THE JOURNEY
-              </h3>
-              <div className="space-y-12">
-                {portfolioData.experience.map((exp, i) => (
-                  <div key={i} className="relative pl-10 border-l-2 border-[#FF4500]/20 group hover:border-[#FF4500] transition-colors">
-                    <div className="absolute -left-[11px] top-0 w-5 h-5 rounded-full bg-[#101010] border-4 border-[#FF4500] group-hover:scale-125 transition-transform shadow-[0_0_20px_rgba(255,69,0,0.6)]"></div>
-                    <h4 className="text-2xl font-bold text-white">{exp.jobTitle}</h4>
-                    <p className="text-[#FF4500] font-bold text-sm mb-4">{exp.company} <span className="text-slate-500 font-normal ml-2">[{exp.date}]</span></p>
-                    <p className="text-slate-400 leading-relaxed">{exp.responsibilities}</p>
-                  </div>
-                ))}
-              </div>
+      <div className="relative z-20 max-w-7xl mx-auto px-6 py-12">
+
+        {/* HEADER: Dynamic Logo & Nav */}
+        <nav className="flex justify-between items-center mb-32">
+          <div className="flex items-center gap-4">
+            {/* ROUND LOGO FIX */}
+            <div className="w-14 h-14 rounded-full p-[2px] bg-gradient-to-tr from-orange-600 to-yellow-400 shadow-[0_0_20px_rgba(255,69,0,0.4)]">
+              <img
+                // 👇 Changed the fallback URL here!
+                src={brand.logo || "https://ui-avatars.com/api/?name=3D&background=ff4500&color=fff"}
+                className="w-full h-full object-cover rounded-full border-2 border-black"
+                alt="Brand Logo"
+              />
             </div>
-          )}
+            <span className="text-xl font-black uppercase tracking-tighter text-white">3D UNIVERSE</span>
+          </div>
+          <div className="flex gap-4">
+            {Object.entries(contact.socialUrls || {}).map(([key, url]) => (
+              <a key={key} href={url} className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 hover:bg-orange-500 transition-all border border-white/10 group">
+                <Globe size={18} className="group-hover:text-black" />
+              </a>
+            ))}
+          </div>
+        </nav>
 
-          {/* Skills - "Heat Levels" */}
-          {portfolioData?.skills?.length > 0 && (
-            <div className="p-10 bg-[#101010]/40 backdrop-blur-3xl border border-[#FF4500]/20 rounded-[2.5rem] shadow-2xl">
-              <h3 className="text-2xl font-black mb-8 flex items-center gap-3 text-[#FF4500]">
-                <Award /> HEAT LEVELS
+        {/* HERO: The Core Visual Hook */}
+        <section className="text-center space-y-8 mb-40">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+            <h1 className="text-6xl md:text-9xl font-black text-white uppercase tracking-tighter leading-none drop-shadow-[0_0_50px_rgba(255,69,0,0.3)]">
+              {brand.name || "MOLTEN_PROTOCOL"}
+            </h1>
+            <p className="text-xl md:text-3xl text-orange-500 font-bold tracking-[0.2em] mt-4 uppercase italic">
+              {hero.headline || "Forging Immersive Reality"}
+            </p>
+          </motion.div>
+
+          {hero.ctaText && (
+            <button className="px-10 py-5 bg-gradient-to-r from-orange-600 to-red-600 text-white font-black rounded-none skew-x-[-12deg] hover:skew-x-0 transition-all shadow-[0_0_30px_rgba(255,69,0,0.5)] uppercase italic tracking-widest">
+              {hero.ctaText}
+            </button>
+          )}
+        </section>
+
+        {/* SECTION BUILDER: Modular Architecture */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-40">
+          {blocks.map((block) => (
+            <div key={block.id} className={`${glassStyle} p-10 rounded-none border-l-4 border-l-orange-600 relative group overflow-hidden`}>
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-100 transition-opacity">
+                <Layers className="text-orange-500" size={40} />
+              </div>
+              <h3 className="text-2xl font-black text-white mb-8 flex items-center gap-3 uppercase italic">
+                <Activity size={20} className="text-orange-500" /> {block.title}
               </h3>
-              <div className="space-y-6">
-                {portfolioData.skills.map((skill, i) => (
-                  <div key={i}>
-                    <div className="flex justify-between mb-2 text-sm font-black tracking-widest uppercase">
-                      <span>{skill.name}</span>
-                      <span className="text-[#FF4500]">{skill.level}%</span>
+
+              {block.type === 'features' && (
+                <div className="space-y-6">
+                  {block.items?.map((item, i) => (
+                    <div key={i} className="flex gap-4 items-start border-b border-white/5 pb-4">
+                      <div className="w-2 h-2 rounded-full bg-orange-500 mt-2 animate-pulse" />
+                      <div>
+                        <h4 className="font-bold text-white uppercase text-sm">{item.title}</h4>
+                        <p className="text-orange-200/60 text-xs mt-1">{item.desc}</p>
+                      </div>
                     </div>
-                    <div className="h-1.5 w-full bg-[#101010] rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-gradient-to-r from-[#FF4500] to-[#FFFFE0] shadow-[0_0_15px_rgba(255,69,0,0.8)] transition-all duration-1000" 
-                        style={{ width: `${skill.level}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-
-          {/* Education - Mini Glass Cards */}
-          {portfolioData?.education?.length > 0 && (
-            <div className="p-10 bg-[#101010]/40 backdrop-blur-3xl border border-[#FF4500]/20 rounded-[2.5rem] shadow-2xl">
-              <h3 className="text-2xl font-black mb-8 flex items-center gap-3 text-[#FF4500]">
-                <GraduationCap /> FOUNDATION
-              </h3>
-              <div className="space-y-6">
-                {portfolioData.education.map((edu, i) => (
-                  <div key={i} className="p-4 bg-[#101010]/60 rounded-2xl border border-white/5 hover:border-[#FF4500]/50 hover:shadow-[0_0_20px_rgba(255,69,0,0.2)] transition-all">
-                    <h4 className="font-bold text-lg">{edu.degree}</h4>
-                    <p className="text-slate-400 text-sm">{edu.institution}</p>
-                    <p className="text-[#FF4500]/80 text-xs font-bold mt-2">{edu.year}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          ))}
         </div>
 
-        {/* Floating Social Footer */}
-        <footer className="mt-20 flex flex-col items-center gap-8">
-            <div className="flex gap-6">
-               {c.linkedin && <a href={c.linkedin} className="p-4 bg-[#101010]/60 rounded-full hover:bg-[#FF4500] hover:shadow-[0_0_20px_rgba(255,69,0,0.6)] transition-all border border-[#FF4500]/20"><Linkedin size={24}/></a>}
-               {c.github && <a href={c.github} className="p-4 bg-[#101010]/60 rounded-full hover:bg-[#FF4500] hover:shadow-[0_0_20px_rgba(255,69,0,0.6)] transition-all border border-[#FF4500]/20"><Github size={24}/></a>}
-               {c.email && <a href={`mailto:${c.email}`} className="p-4 bg-[#101010]/60 rounded-full hover:bg-[#FF4500] hover:shadow-[0_0_20px_rgba(255,69,0,0.6)] transition-all border border-[#FF4500]/20"><Mail size={24}/></a>}
+        {/* MEDIA MANAGER: Cinematic Assets */}
+        {media.length > 0 && (
+          <section className="mb-40">
+            <h2 className="text-3xl font-black text-white mb-12 uppercase italic flex items-center gap-4">
+              <span className="w-12 h-[2px] bg-orange-600" /> VISUAL_ARCHIVE
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {media.map((file, idx) => (
+                <div key={idx} className="aspect-video relative overflow-hidden group border border-white/10 shadow-2xl">
+                  {file.type?.includes('video') ? (
+                    <video src={file.url} autoPlay loop muted className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
+                  ) : (
+                    <img src={file.url} alt="" className="w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-1000" />
+                  )}
+                  <div className="absolute inset-0 bg-orange-600/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              ))}
             </div>
-            <div className="text-slate-600 text-xs tracking-[0.5em] font-bold">GALAXIFY AI • 2026</div>
+          </section>
+        )}
+
+        {/* FOOTER: Global Command */}
+        <footer className="pt-20 border-t border-orange-500/20 flex flex-col md:flex-row justify-between items-center gap-8 opacity-60 hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-4 font-mono text-xs uppercase tracking-widest text-orange-500">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            NODE_STATUS: STABLE_DEPLOYMENT
+          </div>
+          <div className="flex gap-8 text-xs font-bold uppercase tracking-widest text-white">
+            <a href="#" className="hover:text-orange-500">Protocol_Terms</a>
+            <a href="#" className="hover:text-orange-500">Secure_Access</a>
+          </div>
+          <div className="text-[10px] font-black text-white/40 uppercase">
+            EST. 2026 // 3D_UNIVERSE_CORE
+          </div>
         </footer>
+
       </div>
     </div>
   );

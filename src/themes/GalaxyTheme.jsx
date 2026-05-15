@@ -1,171 +1,137 @@
 import React from 'react';
-import { Mail, Github, Linkedin, ExternalLink, Download } from 'lucide-react';
+import { Mail, Globe, ExternalLink, Download } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
 
 const GalaxyTheme = ({ portfolioData }) => {
-  // 1. Safely unpack all the data from the dashboard
+  // 🚀 1. Safely unpack the exact data structure saved by your Dashboard
   const {
-    personal = {},
+    brand = {},
+    hero = {},
     contact = {},
-    about = "",
-    skills = [],
-    experience = [],
-    projects = [],
-    research = [],
-    achievements = [],
-    gallery = [],
-    publicResumeUrl = ""
+    blocks = [],
+    media = []
   } = portfolioData || {};
+
+  // Extract primary color, defaulting to cyan if none selected
+  const primaryColor = brand.colors?.[0] || '#06B6D4';
 
   return (
     <div className="min-h-screen bg-[#050510] text-slate-200 font-sans relative overflow-hidden pb-20">
-      {/* 1. PUT YOUR 3D ELEMENT HERE! */}
-      <div className="fixed inset-0 z-0">
+
+      {/* 3D BACKGROUND */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
         <Canvas camera={{ position: [0, 0, 1] }}>
           <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
         </Canvas>
       </div>
 
       <div className="max-w-4xl mx-auto px-6 pt-24 relative z-10">
-        
-        {/* HEADER: Profile Pic, Name, Designation */}
+
+        {/* HEADER: Logo, Brand Name, Headline */}
         <header className="text-center mb-16 space-y-6">
-          {personal.profilePicture && (
-            <div className="w-32 h-32 mx-auto rounded-full p-1 bg-gradient-to-tr from-purple-500 to-cyan-500">
-              <img 
-                src={personal.profilePicture} 
-                alt="Profile" 
+          {brand.logo && (
+            <div className="w-32 h-32 mx-auto rounded-full p-1" style={{ background: `linear-gradient(to top right, #8b5cf6, ${primaryColor})` }}>
+              <img
+                src={brand.logo}
+                alt="Brand Logo"
                 className="w-full h-full object-cover rounded-full border-4 border-[#050510]"
               />
             </div>
           )}
+
           <div>
-            <h1 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 tracking-tight mb-2">
-              {personal.name || "Your Name"}
+            <h1 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text tracking-tight mb-2" style={{ backgroundImage: `linear-gradient(to right, #c084fc, ${primaryColor})` }}>
+              {brand.name || "Your Brand"}
             </h1>
-            <p className="text-xl text-cyan-400 tracking-widest uppercase font-semibold">
-              {personal.designation || "Creative Professional"}
+            <p className="text-xl tracking-widest uppercase font-semibold" style={{ color: primaryColor }}>
+              {hero.headline || brand.tagline || "Your Awesome Tagline"}
             </p>
+            {hero.subheadline && (
+              <p className="text-slate-400 mt-4 max-w-2xl mx-auto">{hero.subheadline}</p>
+            )}
           </div>
+
+          {/* CTA BUTTON */}
+          {hero.ctaText && (
+            <div className="pt-4">
+              <a href={hero.ctaLink || "#"} className="inline-flex items-center gap-2 text-black px-8 py-3 rounded-full font-bold transition-all hover:scale-105" style={{ backgroundColor: primaryColor, boxShadow: `0 0 20px ${primaryColor}50` }}>
+                {hero.ctaText}
+              </a>
+            </div>
+          )}
 
           {/* CONTACT LINKS */}
           <div className="flex justify-center gap-4 pt-4">
             {contact.email && <a href={`mailto:${contact.email}`} className="text-slate-400 hover:text-white transition-colors"><Mail size={24} /></a>}
-            {contact.github && <a href={contact.github} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-white transition-colors"><Github size={24} /></a>}
-            {contact.linkedin && <a href={contact.linkedin} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-white transition-colors"><Linkedin size={24} /></a>}
-          </div>
 
-          {publicResumeUrl && (
-            <div className="pt-4">
-              <a href={publicResumeUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white px-6 py-3 rounded-full font-bold transition-all">
-                <Download size={18} /> Download CV
+            {/* Map through dynamic social URLs from Dashboard */}
+            {Object.entries(contact.socialUrls || {}).map(([platform, url]) => (
+              <a key={platform} href={url} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-white transition-colors" title={platform}>
+                <Globe size={24} />
               </a>
-            </div>
-          )}
+            ))}
+          </div>
         </header>
 
-        {/* ABOUT ME */}
-        {about && (
+        {/* ABOUT (Brand Short Description) */}
+        {brand.aboutShort && (
           <section className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
-            <h2 className="text-2xl font-bold text-purple-400 mb-4">About Me</h2>
-            <p className="text-slate-300 leading-relaxed">{about}</p>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: primaryColor }}>About Us</h2>
+            <p className="text-slate-300 leading-relaxed whitespace-pre-wrap">{brand.aboutShort}</p>
           </section>
         )}
 
-        {/* SKILLS */}
-        {skills.length > 0 && (
-          <section className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
-            <h2 className="text-2xl font-bold text-purple-400 mb-6">Skills</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {skills.map((skill, idx) => (
-                <div key={idx}>
-                  <div className="flex justify-between text-sm mb-2 text-slate-300 font-medium">
-                    <span>{skill.name}</span>
-                    <span>{skill.level}%</span>
-                  </div>
-                  <div className="w-full bg-black/50 rounded-full h-2">
-                    <div 
-                      className="bg-gradient-to-r from-purple-500 to-cyan-500 h-2 rounded-full" 
-                      style={{ width: `${skill.level}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        {/* DYNAMIC BLOCKS FROM SECTION BUILDER */}
+        {blocks.map((block, idx) => (
+          <section key={block.id || idx} className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+            <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>{block.title}</h2>
 
-        {/* EXPERIENCE */}
-        {experience.length > 0 && experience[0].jobTitle && (
+            {/* Render Features Block */}
+            {block.type === 'features' && block.items && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {block.items.map((item, i) => (
+                  <div key={i} className="bg-black/30 p-5 rounded-xl border border-white/5">
+                    {item.icon && <img src={item.icon} alt={item.title} className="w-10 h-10 mb-3 rounded object-cover" />}
+                    <h3 className="text-white font-bold mb-2">{item.title}</h3>
+                    <p className="text-slate-400 text-sm">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Render FAQ Block */}
+            {block.type === 'faq' && block.items && (
+              <div className="space-y-4">
+                {block.items.map((item, i) => (
+                  <div key={i} className="bg-black/30 p-5 rounded-xl border border-white/5 border-l-4" style={{ borderLeftColor: primaryColor }}>
+                    <h3 className="text-white font-bold mb-1">{item.q}</h3>
+                    <p className="text-slate-400 text-sm">{item.a}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Fallback for other block types */}
+            {block.type !== 'features' && block.type !== 'faq' && (
+              <p className="text-slate-400 text-sm">Content for {block.type} block will appear here.</p>
+            )}
+          </section>
+        ))}
+
+        {/* MEDIA GALLERY */}
+        {media.length > 0 && (
           <section className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
-            <h2 className="text-2xl font-bold text-purple-400 mb-6">Experience</h2>
-            <div className="space-y-8">
-              {experience.map((exp, idx) => (
-                <div key={idx} className="border-l-2 border-cyan-500/30 pl-6 relative">
-                  <div className="absolute w-3 h-3 bg-cyan-500 rounded-full -left-[7px] top-1.5" />
-                  <h3 className="text-xl font-bold text-white">{exp.jobTitle}</h3>
-                  <p className="text-cyan-400 font-medium mb-1">{exp.company} <span className="text-slate-500 text-sm ml-2">{exp.date}</span></p>
-                  {exp.description && <p className="text-slate-300 text-sm mb-3 mt-2">{exp.description}</p>}
-                  {exp.responsibilities && (
-                    <p className="text-slate-400 text-sm whitespace-pre-wrap">{exp.responsibilities}</p>
+            <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>Media Gallery</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {media.map((item, idx) => (
+                <div key={idx} className="group relative aspect-square rounded-xl overflow-hidden border border-white/10">
+                  {item.type?.includes('image') ? (
+                    <img src={item.url} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                  ) : (
+                    <div className="w-full h-full bg-black flex items-center justify-center text-slate-500 text-xs">Video File</div>
                   )}
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* RESEARCH */}
-        {research.length > 0 && research[0].title && (
-          <section className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
-            <h2 className="text-2xl font-bold text-pink-400 mb-6">Research & Papers</h2>
-            <div className="space-y-6">
-              {research.map((item, idx) => (
-                <div key={idx} className="bg-black/30 p-6 rounded-xl border border-white/5">
-                  <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
-                  {item.analysis_ai && <p className="text-slate-400 text-sm italic mb-4">"{item.analysis_ai}"</p>}
-                  {item.image_url && <img src={item.image_url} alt="Research Graph" className="w-full max-h-64 object-cover rounded-lg mt-4 border border-white/10" />}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ACHIEVEMENTS */}
-        {achievements.length > 0 && achievements[0].title && (
-          <section className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
-            <h2 className="text-2xl font-bold text-purple-400 mb-6">Achievements</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {achievements.map((ach, idx) => (
-                <div key={idx} className="bg-black/30 p-4 rounded-xl border border-white/5 flex gap-4 items-start">
-                  {ach.image && <img src={ach.image} alt={ach.title} className="w-16 h-16 rounded-lg object-cover" />}
-                  <div>
-                    <h3 className="text-white font-bold text-sm">{ach.title}</h3>
-                    <p className="text-slate-400 text-xs mt-1">{ach.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* GALLERY */}
-        {gallery.length > 0 && gallery[0].image && (
-          <section className="mb-16 bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
-            <h2 className="text-2xl font-bold text-cyan-400 mb-6">Gallery</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {gallery.map((item, idx) => (
-                item.image ? (
-                  <div key={idx} className="group relative aspect-square rounded-xl overflow-hidden border border-white/10">
-                    <img src={item.image} alt={item.caption || "Gallery image"} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                    {item.caption && (
-                      <div className="absolute bottom-0 left-0 w-full bg-black/70 p-2 transform translate-y-full group-hover:translate-y-0 transition-transform">
-                        <p className="text-xs text-center text-white">{item.caption}</p>
-                      </div>
-                    )}
-                  </div>
-                ) : null
               ))}
             </div>
           </section>

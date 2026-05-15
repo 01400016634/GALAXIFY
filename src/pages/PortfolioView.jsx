@@ -16,11 +16,25 @@ const PortfolioView = () => {
   useEffect(() => {
     const fetchPortfolio = async () => {
       try {
-        // Fetch from Supabase Postgres database
+        // 🚀 1. CHECK FOR PREVIEW MODE (This part is perfect!)
+        const isPreviewMode = new URLSearchParams(window.location.search).get('mode') === 'preview';
+
+        if (isPreviewMode) {
+          const draftData = localStorage.getItem('3duniverse_draft');
+          if (draftData) {
+            console.log("🚀 PREVIEW MODE ACTIVATED. DATA:", JSON.parse(draftData));
+            setData(JSON.parse(draftData));
+            setLoading(false);
+            return;
+          }
+        }
+
+        // 🚀 2. FETCH LIVE DATA (The Fix is right here 👇)
         const { data: fetchedData, error: fetchError } = await supabase
           .from('landing_pages')
           .select('page_data')
-          .eq('id', username)
+          // 🔥 CHANGED: We now search the 'site_name' column instead of 'id'
+          .eq('site_name', username)
           .single();
 
         if (fetchError) throw fetchError;
@@ -46,7 +60,7 @@ const PortfolioView = () => {
   if (loading) {
     return (
       <div className="min-h-screen w-full bg-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-cyan-500"></div>
       </div>
     );
   }
@@ -59,7 +73,17 @@ const PortfolioView = () => {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="min-h-screen w-full bg-black flex flex-col items-center justify-center text-white font-mono p-6 text-center">
+        <h1 className="text-3xl font-bold text-[#ff003c] mb-4">SYSTEM_EMPTY</h1>
+        <p className="text-slate-400 mb-6">No portfolio data found for this user.</p>
+        <p className="text-sm text-slate-500 max-w-md">
+          If you are testing Preview Mode, make sure you clicked the "Preview" button inside the Dashboard so it can save your draft to memory!
+        </p>
+      </div>
+    );
+  }
 
   // Determine which theme to render based on the data
   const theme = (data.theme?.themeId || data.setup?.themeId || 'space').toLowerCase();

@@ -12,74 +12,64 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Initial Session Check
-    const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          setCurrentUser({
-            uid: session.user.id,
-            email: session.user.email,
-            displayName: session.user.user_metadata?.full_name || 'Galaxify User',
-          });
-        }
-      } catch (error) {
-        console.error("Session check error:", error);
-      } finally {
-        // Only stop loading if we aren't waiting for a hash token
-        if (!window.location.hash.includes('access_token')) {
-          setLoading(false);
-        }
+    // Detect if we are returning from a Google OAuth redirect
+    const isRedirecting =
+      window.location.search.includes('code=') ||
+      window.location.hash.includes('access_token');
+
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.user) {
+        setCurrentUser(session.user);
+      }
+
+      // Do not stop loading if Google is passing us a token
+      if (!isRedirecting) {
+        setLoading(false);
       }
     };
 
-    checkSession();
+    initializeAuth();
 
-    // 2. Auth State Listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Supabase Auth Event:", event);
+    // Listen for Supabase to finish processing the token
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session?.user) {
+          setCurrentUser(session.user);
+        } else {
+          setCurrentUser(null);
+        }
 
-      if (session?.user) {
-        setCurrentUser({
-          uid: session.user.id,
-          email: session.user.email,
-          displayName: session.user.user_metadata?.full_name || 'Galaxify User',
-        });
-      } else {
-        setCurrentUser(null);
+        // Once the token is processed, it is safe to unblock the UI
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
 
     return () => {
-      subscription?.unsubscribe();
+      authListener.subscription.unsubscribe();
     };
   }, []);
 
-  const login = () => {
-    return supabase.auth.signInWithOAuth({
+  // 🚀 THIS IS THE MISSING FUNCTION THAT CAUSED THE CRASH
+  const loginWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/dashboard`
+        redirectTo: `${window.location.origin}/auth/callback`
       }
     });
+    if (error) throw error;
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
-    setCurrentUser(null);
-    window.location.href = '/';
-  };
-
-  const value = {
-    currentUser,
-    loading,
-    login,
-    logout
+    window.location.href = '/login';
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    // Line 80: It is now safely exporting the function defined above
+    <AuthContext.Provider value={{ currentUser, loading, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );

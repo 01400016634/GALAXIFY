@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-// 1. THIS IS THE ONLY DATABASE IMPORT YOU NEED NOW:
 import { supabase } from '../services/supabase';
 import {
   Facebook, Phone, Mail, MessageCircle, BarChart3, Globe, Layout, PackageSearch, Settings,
@@ -9,7 +8,8 @@ import {
   Linkedin, Twitter, Youtube, Github, ShieldCheck, Map, CreditCard, Box,
   AlignLeft, Play, Wand2, Smartphone, Monitor, Type, Palette, Video, Share2, Search,
   Zap, Layers, Sparkles, Sliders, Copy, ChevronsUpDown, ArrowRight, ArrowLeft, Users, Activity,
-  ArrowUpRight, Instagram, MessageSquare, FileText, DownloadCloud, Fingerprint, User, Crown, ExternalLink
+  ArrowUpRight, Instagram, MessageSquare, FileText, DownloadCloud, Fingerprint, User, Crown, ExternalLink,
+  LayoutDashboard, PlusCircle, Edit
 } from 'lucide-react';
 
 const SOCIAL_PLATFORMS = [
@@ -23,6 +23,196 @@ const SOCIAL_PLATFORMS = [
   { id: 'wechat', name: 'WeChat', icon: MessageSquare, color: 'text-emerald-500', hex: '#07C160' },
 ];
 
+// 🚀 UPDATED CATEGORY TEMPLATES
+const CATEGORY_TEMPLATES = {
+  'E-Commerce': [
+    { title: 'Hero Section', content: { headline: '', subheadline: '', description: '' }, cta: { buttonText: '' } },
+    { title: 'Product Section', customFields: { productName: '', price: '', discountPercent: '', stockStatus: '', productImages: '', description: '' }, cta: { buttonText: 'Buy Now' } },
+    { title: 'Offer / Discount Section', content: { headline: 'Limited Offer', subheadline: '', description: '' }, cta: { buttonText: 'Claim' } },
+    { title: 'Reviews Section', content: { headline: 'Customer Reviews' } },
+    { title: 'CTA Section', content: { headline: 'Join Us' }, cta: { buttonText: 'Sign Up' } }
+  ],
+  'Digital Gadgets': [
+    { title: 'Hero', content: { headline: '', subheadline: '' } },
+    { title: 'Product Showcase', customFields: { productName: '', modelUploadGLB: '' } },
+    { title: 'Technical Specs', customFields: { processor: '', ram: '', storage: '', battery: '', display: '' } },
+    { title: '3D Viewer Section', customFields: { modelUploadGLB: '' } },
+    { title: 'Comparison Section', content: { headline: 'Comparison' } }
+  ],
+  'Real Estate': [
+    { title: 'Hero', content: { headline: '' } },
+    { title: 'Property Details', customFields: { propertyName: '', price: '', locationMapLink: '', bedrooms: '', bathrooms: '', area: '' } },
+    { title: 'Amenities', customFields: { amenitiesArray: '' } },
+    { title: 'Gallery', content: { headline: 'Photos' } },
+    { title: 'Booking Section', cta: { buttonText: 'Contact Agent' } }
+  ],
+  'Learning Platform': [
+    { title: 'Hero', content: { headline: '' } },
+    { title: 'Course Details', customFields: { courseTitle: '', duration: '', level: '' } },
+    { title: 'Curriculum', customFields: { modulesArray: '' } },
+    { title: 'Instructor', customFields: { instructorName: '', certificateToggle: 'Yes' } },
+    { title: 'Pricing', cta: { buttonText: 'Enroll' } }
+  ],
+  'Agency / Service': [
+    { title: 'Hero', content: { headline: '' } },
+    { title: 'Services', customFields: { agencyName: '', serviceList: '' } },
+    { title: 'Case Studies', customFields: { resultMetrics: '' } },
+    { title: 'Testimonials', customFields: { clientLogos: '' } },
+    { title: 'Contact CTA', customFields: { contactEmail: '' } }
+  ],
+  'Portfolio': [
+    { title: 'Hero', customFields: { name: '', title: '' } },
+    { title: 'About', customFields: { bio: '', resumeLink: '', socialLinks: '' } },
+    { title: 'Experience', customFields: { experienceData: '' } },
+    { title: 'Projects', customFields: { projectsArray: '' } },
+    { title: 'Skills', customFields: { techStack: '' } },
+    { title: 'Training And Certification', customFields: { certificateList: '' } },
+    { title: 'Research', customFields: { researchPapers: '' } },
+    { title: 'Contact', content: { headline: 'Get in Touch' } }
+  ]
+};
+
+const renderStep4Blocks = () => {
+  // 🚀 IF EMPTY: Show Category Selection Grid inside Section Builder
+  if (pageData.blocks.length === 0) {
+    return (
+      <div className="space-y-8 h-full animate-in fade-in duration-500">
+        <div className="text-center max-w-2xl mx-auto">
+          <h2 className="text-3xl font-black text-white mb-2">Build Your Section Structure</h2>
+          <p className="text-gray-400">Choose your industry to automatically generate the required sections and smart fields.</p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {Object.keys(CATEGORY_TEMPLATES).map(cat => (
+            <button
+              key={cat}
+              onClick={() => handleCategorySelect(cat)}
+              className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-cyan-500 hover:bg-cyan-500/5 transition-all text-center group"
+            >
+              <PlusCircle className="mx-auto text-gray-500 group-hover:text-cyan-400 mb-4" size={32} />
+              <h3 className="text-white font-bold text-lg">{cat}</h3>
+              <p className="text-[10px] text-gray-500 uppercase mt-2">Generate {CATEGORY_TEMPLATES[cat].length} Sections</p>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // 🚀 IF BLOCKS EXIST: Show the actual Section Management UI
+  return (
+    <div className="flex flex-col h-full space-y-6">
+      <div className="flex justify-between items-center bg-black/40 p-6 rounded-2xl border border-white/10">
+        <div>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2"><LayoutDashboard className="text-cyan-500" /> Structure: {pageData.setup.category}</h2>
+          <p className="text-gray-400 text-sm">Managing {pageData.blocks.length} sections for your page.</p>
+        </div>
+        <div className="flex gap-2">
+          {/* Change Category Button to restart structure */}
+          <button onClick={() => setPageData({ ...pageData, blocks: [] })} className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-white transition-colors">Change Category</button>
+          <button onClick={handleAddCustomSection} className="bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-lg text-sm font-bold border border-white/10 flex items-center gap-2 transition-all">
+            <Plus size={16} /> Custom Section
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
+        {pageData.blocks.map((block, index) => (
+          <div key={block.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition-all">
+
+            {/* 1. SECTION HEADER BAR */}
+            <div className="bg-black/40 p-4 flex justify-between items-center cursor-pointer hover:bg-white/5 border-b border-white/10" onClick={() => handleUpdateBlock(block.id, 'collapsed', !block.collapsed)}>
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col opacity-50" onClick={(e) => e.stopPropagation()}>
+                  <button onClick={() => handleMoveBlock(index, -1)} disabled={index === 0} className="hover:text-white disabled:opacity-20"><ChevronUp size={14} /></button>
+                  <button onClick={() => handleMoveBlock(index, 1)} disabled={index === pageData.blocks.length - 1} className="hover:text-white disabled:opacity-20"><ChevronDown size={14} /></button>
+                </div>
+                <h3 className="text-white font-bold">{block.title}</h3>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">{block.collapsed ? '[Click to Expand]' : '[Click to Collapse]'}</span>
+                <button onClick={(e) => { e.stopPropagation(); handleDeleteBlock(block.id); }} className="text-red-500/50 hover:text-red-400 p-2 transition-colors"><Trash2 size={16} /></button>
+              </div>
+            </div>
+
+            {/* 2. THE EXPANDABLE FORM BOXES */}
+            {!block.collapsed && (
+              <div className="p-6 space-y-6 bg-black/20 animate-in slide-in-from-top-2 duration-300">
+
+                {/* 🚀 BOX 5: NICHE DATA (Auto-Generates from CATEGORY_TEMPLATES) */}
+                {block.customFields && Object.keys(block.customFields).length > 0 && (
+                  <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-5">
+                    <h4 className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2"><Fingerprint size={14} /> Box 5: Required Niche Data</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {Object.keys(block.customFields).map(key => (
+                        <div key={key}>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2">
+                            {key.replace(/([A-Z])/g, ' $1').trim()}
+                          </label>
+                          <input
+                            type="text"
+                            value={block.customFields[key]}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setPageData(prev => ({
+                                ...prev,
+                                blocks: prev.blocks.map(b => b.id === block.id ? { ...b, customFields: { ...b.customFields, [key]: val } } : b)
+                              }));
+                            }}
+                            className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-cyan-500"
+                            placeholder={`Enter ${key}...`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* BOX 1: CONTENT */}
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Box 1: Main Content</h4>
+                    <input type="text" placeholder="Headline" value={block.content?.headline || ''} onChange={e => handleUpdateBlockData(block.id, 'content', 'headline', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded p-2.5 text-white text-sm focus:border-cyan-500 outline-none" />
+                    <textarea placeholder="Description / Narrative" rows="3" value={block.content?.description || ''} onChange={e => handleUpdateBlockData(block.id, 'content', 'description', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded p-2.5 text-white text-sm focus:border-cyan-500 outline-none resize-none" />
+                  </div>
+
+                  {/* BOX 2: MEDIA */}
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Box 2: Visual Media</h4>
+                    <div className="flex gap-2">
+                      <button className="flex-1 bg-black/40 border border-dashed border-white/20 rounded p-4 text-gray-500 hover:text-cyan-400 hover:border-cyan-500 transition-colors flex flex-col items-center gap-2">
+                        <ImageIcon size={18} /> <span className="text-[10px] font-bold uppercase">Static Image</span>
+                      </button>
+                      <button className="flex-1 bg-black/40 border border-dashed border-white/20 rounded p-4 text-gray-500 hover:text-purple-400 hover:border-purple-500 transition-colors flex flex-col items-center gap-2">
+                        <Box size={18} /> <span className="text-[10px] font-bold uppercase">3D / Video</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* BOX 3: CTA */}
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Box 3: Action Button</h4>
+                    <input type="text" placeholder="Button Label (e.g. Order Now)" value={block.cta?.buttonText || ''} onChange={e => handleUpdateBlockData(block.id, 'cta', 'buttonText', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded p-2.5 text-white text-sm focus:border-cyan-500 outline-none" />
+                  </div>
+
+                  {/* BOX 4: STYLE */}
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Box 4: Animations</h4>
+                    <select value={block.style?.animationType || 'fade-up'} onChange={e => handleUpdateBlockData(block.id, 'style', 'animationType', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded p-2.5 text-white text-sm outline-none cursor-pointer">
+                      <option value="fade-up">Smooth Fade Up</option>
+                      <option value="3d-flip">3D Perspective Flip</option>
+                      <option value="slide-right">Slide From Right</option>
+                    </select>
+                  </div>
+                </div>
+
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 const INITIAL_PAGE_DATA = {
   id: '',
   status: 'Draft',
@@ -50,6 +240,7 @@ const MENU_ITEMS = [
 const EDITOR_STEPS = [
   { id: 'setup', label: 'Project Setup', icon: Settings, phase: 'Phase 1: Architecture' },
   { id: 'brand', label: 'Brand Identity', icon: Palette, phase: 'Phase 1: Architecture' },
+  { id: 'category', label: 'Category Selection', icon: LayoutTemplate, phase: 'Phase 1: Architecture' },
   { id: 'hero', label: 'Hero Section', icon: Monitor, phase: 'Phase 2: Core Content' },
   { id: 'blocks', label: 'Section Builder', icon: Layers, phase: 'Phase 2: Core Content' },
   { id: 'theme', label: 'Theme & Animations', icon: Sliders, phase: 'Phase 3: Refinement' },
@@ -60,18 +251,15 @@ const EDITOR_STEPS = [
   { id: 'publish', label: 'Publish settings', icon: Share2, phase: 'Phase 4: Launch' }
 ];
 
-// 2. SUPABASE FILE UPLOADER
 const uploadFileToStorage = async (file) => {
   if (!file) return null;
   try {
     const safeName = file.name.replace(/[^a-zA-Z0-9.]/g, '');
     const filePath = `uploads/${Date.now()}_${safeName}`;
 
-    // Uploads directly to Supabase storage! No size limit crashes!
     const { data, error } = await supabase.storage.from('media').upload(filePath, file);
     if (error) throw error;
 
-    // Returns the permanent public URL
     const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(filePath);
     return publicUrlData.publicUrl;
   } catch (err) {
@@ -105,39 +293,42 @@ export default function Dashboard() {
   const [inventory, setInventory] = useState([]);
 
   useEffect(() => {
-    if (currentUser) {
-      setUserProfile(prev => ({
-        ...prev,
-        name: currentUser.displayName || 'Galaxify User',
-        email: currentUser.email,
-        avatar: currentUser.photoURL || ''
-      }));
+    if (!currentUser || !currentUser.id) return;
 
-      const fetchMongoData = async () => {
-        try {
-          const timestamp = new Date().getTime();
-          const mongoResponse = await fetch(`http://localhost:5001/api/user/portfolio/${currentUser.uid}?t=${timestamp}`);
-          if (mongoResponse.ok) {
-            const mongoData = await mongoResponse.json();
-            if (mongoData.user) {
-              setUserTier(mongoData.user.plan === 'pro' || mongoData.user.plan === 'premium' ? 'pro' : 'free');
-            }
+    const userName = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || '3D Universe User';
+    const userAvatar = currentUser.user_metadata?.avatar_url || '';
+
+    setUserProfile(prev => ({
+      ...prev,
+      name: userName,
+      email: currentUser.email,
+      avatar: userAvatar
+    }));
+
+    const fetchMongoData = async () => {
+      try {
+        const timestamp = new Date().getTime();
+        const mongoResponse = await fetch(`http://localhost:5001/api/user/portfolio/${currentUser.id}?t=${timestamp}`);
+        if (mongoResponse.ok) {
+          const mongoData = await mongoResponse.json();
+          if (mongoData.user) {
+            setUserTier(mongoData.user.plan === 'pro' || mongoData.user.plan === 'premium' ? 'pro' : 'free');
           }
-          await fetch('http://localhost:5001/api/owner/sync-user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: currentUser.displayName || "Galaxify User",
-              email: currentUser.email,
-              uid: currentUser.uid
-            })
-          });
-        } catch (error) {
-          console.error("Database connection failed:", error);
         }
-      };
-      fetchMongoData();
-    }
+        await fetch('http://localhost:5001/api/owner/sync-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: userName,
+            email: currentUser.email,
+            uid: currentUser.id
+          })
+        });
+      } catch (error) {
+        console.error("Database connection failed:", error);
+      }
+    };
+    fetchMongoData();
   }, [currentUser]);
 
   const handleBuyPro = async () => {
@@ -146,7 +337,7 @@ export default function Dashboard() {
       const response = await fetch('http://localhost:5001/api/payment/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: currentUser.uid, plan: 'pro' })
+        body: JSON.stringify({ uid: currentUser.id, plan: 'pro' })
       });
 
       if (response.ok) {
@@ -176,7 +367,6 @@ export default function Dashboard() {
     }));
   };
 
-  // 3. SUPABASE PUBLISH LOGIC
   const handlePublish = async () => {
     if (!currentUser) {
       alert("Error: You must be logged in to your account to publish real changes.");
@@ -185,8 +375,14 @@ export default function Dashboard() {
 
     setSyncStatus('Publishing...');
 
+    const rawBrandName = pageData.brand?.name || "untitled-project";
+    const cleanUrlSlug = rawBrandName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+
     try {
-      const publicUrl = `${window.location.origin}/p/${currentUser.uid}`;
+      const publicUrl = `${window.location.origin}/3DUNIVERSE/${cleanUrlSlug}`;
 
       let sanitizedData;
       try {
@@ -197,19 +393,18 @@ export default function Dashboard() {
         return;
       }
 
-      // Upsert directly to Supabase Postgres database
       const { error } = await supabase
         .from('landing_pages')
         .upsert({
-          id: currentUser.uid,
-          user_id: currentUser.uid,
+          id: currentUser.id,
+          user_id: currentUser.id,
+          site_name: cleanUrlSlug,
           page_data: sanitizedData,
           public_url: publicUrl
         });
 
       if (error) throw error;
 
-      // Update local state to reflect Publish
       setPageData(prev => ({ ...prev, status: 'Published', publish: { ...prev.publish, publicUrl } }));
 
       setSavedPages(prev => {
@@ -226,7 +421,6 @@ export default function Dashboard() {
       setSyncStatus('Published!');
       alert(`🚀 Success! Your Landing Page has been securely deployed via Supabase.\n\nOpening your new page now...`);
 
-      // Automatically open the live URL in a new tab!
       window.open(publicUrl, '_blank');
       setActiveTab('pages');
 
@@ -242,7 +436,16 @@ export default function Dashboard() {
       alert("Please log in to preview your live URL.");
       return;
     }
-    const publicUrl = `${window.location.origin}/p/${currentUser.uid}`;
+
+    const rawBrandName = pageData.brand?.name || "untitled-project";
+    const cleanUrlSlug = rawBrandName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+
+    localStorage.setItem('3duniverse_draft', JSON.stringify(pageData));
+
+    const publicUrl = `${window.location.origin}/3DUNIVERSE/${cleanUrlSlug}?mode=preview`;
     window.open(publicUrl, '_blank');
   };
 
@@ -257,11 +460,7 @@ export default function Dashboard() {
   }
 
   const createNewPage = (category) => {
-    let defaultBlocks = [];
-    if (category === 'ecommerce') defaultBlocks = [{ id: 'b1', type: 'products', title: 'Featured Products', layout: 'theme-default', collapsed: false }];
-    if (category === 'learning') defaultBlocks = [{ id: 'b1', type: 'courses', title: 'Curriculum', layout: 'theme-default', collapsed: false }, { id: 'b2', type: 'trust', title: 'Certifications', layout: 'centered', collapsed: false }];
-
-    setPageData({ ...INITIAL_PAGE_DATA, id: `page-${Date.now()}`, setup: { ...INITIAL_PAGE_DATA.setup, category }, blocks: defaultBlocks });
+    setPageData({ ...INITIAL_PAGE_DATA, id: `page-${Date.now()}`, setup: { ...INITIAL_PAGE_DATA.setup, category }, blocks: [] });
     setIsPageTypeModalOpen(false);
     setActiveTab('editor');
     setActiveEditorStep('setup');
@@ -275,26 +474,72 @@ export default function Dashboard() {
     if (currentStepIndex > 0) setActiveEditorStep(EDITOR_STEPS[currentStepIndex - 1].id);
   };
 
-  const handleAddBlock = (type) => {
-    let items = [];
-    if (type === 'features') items = [{ id: 1, title: '', desc: '', icon: null }, { id: 2, title: '', desc: '', icon: null }, { id: 3, title: '', desc: '', icon: null }];
-    if (type === 'faq') items = [{ id: 1, q: '', a: '' }, { id: 2, q: '', a: '' }];
+  // 🚀 CATEGORY MAPPING LOGIC
+  const handleCategorySelect = (categoryName) => {
+    const templateSections = CATEGORY_TEMPLATES[categoryName] || CATEGORY_TEMPLATES['E-Commerce'];
 
-    const newBlock = { id: `block-${Date.now()}`, type, title: `New ${type} Block`, layout: 'theme-default', collapsed: false, items };
+    const defaultSections = templateSections.map((section, index) => ({
+      id: `sec_${Date.now()}_${index}`,
+      title: section.title,
+      collapsed: true,
+      content: {
+        headline: section.content?.headline || '',
+        subheadline: section.content?.subheadline || '',
+        description: section.content?.description || ''
+      },
+      customFields: section.customFields || {}, // Maps specific fields (Price, RAM, etc)
+      media: { bgImage: '', heroImage: '', video: '' },
+      cta: {
+        buttonText: section.cta?.buttonText || '',
+        buttonLink: section.cta?.buttonLink || '',
+        secondaryText: section.cta?.secondaryText || '',
+        secondaryLink: section.cta?.secondaryLink || ''
+      },
+      style: { animationType: 'fade-up', alignment: 'left', glowEffect: false, overlayStrength: '50%' }
+    }));
+
+    setPageData(prev => ({
+      ...prev,
+      setup: { ...prev.setup, category: categoryName },
+      blocks: defaultSections
+    }));
+
+
+  };
+
+  // 🚀 ADD CUSTOM SECTION LOGIC
+  const handleAddCustomSection = () => {
+    const newBlock = {
+      id: `sec_${Date.now()}_custom`,
+      title: 'New Custom Section',
+      collapsed: false,
+      content: { headline: '', subheadline: '', description: '' },
+      customFields: {},
+      media: { bgImage: '', heroImage: '', video: '' },
+      cta: { buttonText: '', buttonLink: '', secondaryText: '', secondaryLink: '' },
+      style: { animationType: 'fade-up', alignment: 'left', glowEffect: false, overlayStrength: '50%' }
+    };
     setPageData(prev => ({ ...prev, blocks: [...prev.blocks, newBlock] }));
+  };
+
+  const handleUpdateBlockData = (blockId, category, field, value) => {
+    setPageData(prev => ({
+      ...prev,
+      blocks: prev.blocks.map(b => {
+        if (b.id !== blockId) return b;
+        return {
+          ...b,
+          [category]: {
+            ...(b[category] || {}),
+            [field]: value
+          }
+        };
+      })
+    }));
   };
 
   const handleUpdateBlock = (blockId, field, value) => {
     setPageData(prev => ({ ...prev, blocks: prev.blocks.map(b => b.id === blockId ? { ...b, [field]: value } : b) }));
-  };
-
-  const handleUpdateBlockItem = (blockId, itemIndex, field, value) => {
-    setPageData(prev => {
-      const newBlocks = [...prev.blocks];
-      const bIdx = newBlocks.findIndex(b => b.id === blockId);
-      newBlocks[bIdx].items[itemIndex] = { ...newBlocks[bIdx].items[itemIndex], [field]: value };
-      return { ...prev, blocks: newBlocks };
-    });
   };
 
   const handleMoveBlock = (index, direction) => {
@@ -313,7 +558,7 @@ export default function Dashboard() {
   };
 
   // ==========================================
-  // RENDER FUNCTIONS
+  // RENDER FUNCTIONS (ANALYTICS, PAGES, INV, SETTINGS STAY THE SAME)
   // ==========================================
   const renderAnalytics = () => {
     const activeProject = savedPages.find(p => p.id === selectedProjectId) || savedPages[0];
@@ -339,7 +584,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {[
             { title: 'Total Revenue', value: `$${(activeProject.revenue || 0).toLocaleString()}`, icon: DollarSign, color: 'text-green-400', bg: 'bg-green-500/10' },
@@ -557,6 +801,9 @@ export default function Dashboard() {
     </div>
   );
 
+  // ==========================================
+  // 🧩 RENDER EDITOR WORKFLOW STEPS
+  // ==========================================
   const renderStep1Setup = () => (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 h-full">
       <div className="space-y-6">
@@ -568,15 +815,6 @@ export default function Dashboard() {
           <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Project Name</label><input type="text" value={pageData.setup.name} onChange={e => updateNestedData('setup', 'name', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" placeholder="e.g. Product Launch" /></div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Business Category</label>
-              <select value={pageData.setup.category} onChange={e => updateNestedData('setup', 'category', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none appearance-none cursor-pointer">
-                <option value="ecommerce">E-Commerce</option>
-                <option value="learning">Learning Platform</option>
-                <option value="service">Service / Agency</option>
-                <option value="gadgets">Digital Gadgets</option>
-              </select>
-            </div>
-            <div>
               <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Website Goal</label>
               <select value={pageData.setup.goal} onChange={e => updateNestedData('setup', 'goal', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none appearance-none cursor-pointer">
                 <option value="sales">Product Sales</option>
@@ -584,17 +822,14 @@ export default function Dashboard() {
                 <option value="awareness">Brand Awareness</option>
               </select>
             </div>
+            <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Target Audience</label><input type="text" value={pageData.setup.audience} onChange={e => updateNestedData('setup', 'audience', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" placeholder="Tech enthusiasts, ages 18-35" /></div>
           </div>
-          <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Target Audience</label><input type="text" value={pageData.setup.audience} onChange={e => updateNestedData('setup', 'audience', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" placeholder="Tech enthusiasts, ages 18-35" /></div>
         </div>
       </div>
       <div className="bg-[#0A0A0E] border border-white/5 rounded-3xl p-8 relative flex flex-col items-center justify-center text-center shadow-2xl">
         <LayoutTemplate className="w-20 h-20 text-cyan-500/40 mb-6" />
-        <h4 className="text-xl font-bold text-white mb-2">Current Theme: {pageData.setup.themeId.toUpperCase()}</h4>
-        <p className="text-gray-400 text-sm mb-8 max-w-sm">The theme dictates the layout and 3D environment of your landing page.</p>
-        <button onClick={() => setIsThemeModalOpen(true)} className="px-8 py-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all hover:scale-105">
-          <Layout size={18} /> OPEN THEME GALLERY
-        </button>
+        <h4 className="text-xl font-bold text-white mb-2">Architecture Ready</h4>
+        <p className="text-gray-400 text-sm mb-8 max-w-sm">Continue to configure your brand, then let our AI auto-generate your sections based on your category.</p>
       </div>
     </div>
   );
@@ -657,6 +892,28 @@ export default function Dashboard() {
     </div>
   );
 
+  const renderStepCategory = () => (
+    <div className="space-y-8 h-full">
+      <div className="text-center max-w-2xl mx-auto">
+        <h3 className="text-3xl font-black text-white mb-3">Select Your Industry</h3>
+        <p className="text-gray-400">Select a template to automatically load the predefined section structure and fields for your niche. You can always edit these blocks later.</p>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+        {Object.keys(CATEGORY_TEMPLATES).map(cat => (
+          <button
+            key={cat}
+            onClick={() => handleCategorySelect(cat)}
+            className={`p-6 rounded-2xl border text-left transition-all ${pageData.setup.category === cat ? 'bg-cyan-500/10 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.2)]' : 'bg-white/5 border-white/10 hover:border-white/30 hover:bg-white/10'}`}
+          >
+            <Layers className={`w-8 h-8 mb-4 ${pageData.setup.category === cat ? 'text-cyan-400' : 'text-gray-500'}`} />
+            <h3 className="text-lg font-bold text-white">{cat}</h3>
+            <p className="text-xs text-gray-500 mt-2">Includes {CATEGORY_TEMPLATES[cat].length} pre-built structured sections.</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   const renderStep3Hero = () => (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 h-full">
       <div className="space-y-6">
@@ -715,94 +972,119 @@ export default function Dashboard() {
 
   const renderStep4Blocks = () => (
     <div className="flex flex-col h-full space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center bg-black/40 p-6 rounded-2xl border border-white/10">
         <div>
-          <h3 className="text-2xl font-bold text-white mb-1">Section Builder</h3>
-          <p className="text-sm text-gray-400">Drag, drop, and configure modular sections.</p>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2"><LayoutDashboard className="text-cyan-500" /> Dynamic Section Builder</h2>
+          <p className="text-gray-400 text-sm">Category: <span className="text-cyan-400 font-bold">{pageData.setup.category?.toUpperCase() || 'None selected'}</span></p>
         </div>
         <div className="flex gap-2">
-          {['features', 'about', 'trust', 'faq', 'products'].map(type => (
-            <button key={type} onClick={() => handleAddBlock(type)} className="px-3 py-2 bg-cyan-500/10 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/20 rounded-xl text-xs font-bold capitalize transition-colors flex items-center gap-1">
-              <Plus size={14} /> {type}
-            </button>
-          ))}
+          <button onClick={() => {
+            alert("AI suggests: Add 'Testimonials' and 'Pricing' to boost conversions!");
+          }} className="bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 px-4 py-2 rounded-lg text-sm font-bold border border-cyan-500/20 flex items-center gap-2 transition-colors">
+            <Sparkles size={16} /> AI Recommend
+          </button>
+
+          {/* 🚀 ADD CUSTOM SECTION BUTTON ACTIVE */}
+          <button onClick={handleAddCustomSection} className="bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-lg text-sm font-bold border border-white/10 flex items-center gap-2 transition-colors">
+            <PlusCircle size={16} /> Custom Section
+          </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
         {pageData.blocks.map((block, index) => (
-          <div key={block.id} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden group shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition-all">
-            <div className="flex items-center p-3 bg-black/40 border-b border-white/10">
-              <div className="flex flex-col mr-3 opacity-50 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => handleMoveBlock(index, -1)} disabled={index === 0} className="hover:text-white disabled:opacity-30"><ChevronUp size={14} /></button>
-                <button onClick={() => handleMoveBlock(index, 1)} disabled={index === pageData.blocks.length - 1} className="hover:text-white disabled:opacity-30"><ChevronDown size={14} /></button>
-              </div>
+          <div key={block.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition-all">
 
-              <div className="flex-1 flex items-center gap-3">
-                <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">{block.type}</span>
-                <input type="text" value={block.title} onChange={e => handleUpdateBlock(block.id, 'title', e.target.value)} className="bg-transparent border-none text-white font-bold focus:outline-none w-1/3" />
-                <select value={block.layout} onChange={e => handleUpdateBlock(block.id, 'layout', e.target.value)} className="ml-2 bg-black/50 border border-white/10 rounded-md px-2 py-1 text-xs text-gray-400 focus:outline-none">
-                  <option value="theme-default">Layout: Default</option>
-                  <option value="media-left">Layout: Media Left</option>
-                  <option value="media-right">Layout: Media Right</option>
-                  <option value="centered">Layout: Centered</option>
-                </select>
+            <div className="bg-black/40 p-4 flex justify-between items-center cursor-pointer hover:bg-white/5 border-b border-white/10" onClick={() => handleUpdateBlock(block.id, 'collapsed', !block.collapsed)}>
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col opacity-50 hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                  <button onClick={() => handleMoveBlock(index, -1)} disabled={index === 0} className="hover:text-white disabled:opacity-30"><ChevronUp size={14} /></button>
+                  <button onClick={() => handleMoveBlock(index, 1)} disabled={index === pageData.blocks.length - 1} className="hover:text-white disabled:opacity-30"><ChevronDown size={14} /></button>
+                </div>
+                <h3 className="text-white font-bold">{block.title}</h3>
               </div>
-
-              <div className="flex items-center gap-2 ml-auto">
-                <button onClick={() => handleUpdateBlock(block.id, 'collapsed', !block.collapsed)} className="p-2 text-gray-500 hover:text-white transition-colors"><ChevronsUpDown size={16} /></button>
-                <button onClick={() => handleDeleteBlock(block.id)} className="p-2 text-red-500/50 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={16} /></button>
+              <div className="flex items-center gap-3">
+                <button className="text-gray-400 hover:text-white text-xs flex items-center gap-1"><Edit size={14} /> Edit Form</button>
+                <div className="w-10 h-5 bg-cyan-500/20 rounded-full flex items-center p-1 cursor-pointer"><div className="w-3 h-3 bg-cyan-500 rounded-full translate-x-5 transition-transform" /></div>
+                <button onClick={(e) => { e.stopPropagation(); handleDeleteBlock(block.id); }} className="text-red-500/50 hover:text-red-400 transition-colors"><Trash2 size={16} /></button>
               </div>
             </div>
 
             {!block.collapsed && (
-              <div className="p-5">
-                {block.type === 'features' && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {block.items?.map((item, i) => (
-                      <div key={i} className="p-4 bg-black/30 rounded-xl border border-white/5 space-y-3 relative group">
-                        <label className="w-12 h-12 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-500 hover:text-cyan-400 hover:border-cyan-500 cursor-pointer overflow-hidden transition-colors">
-                          {item.icon ? <img src={item.icon} className="w-full h-full object-cover" /> : <Upload size={16} />}
-                          <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                            const url = await uploadFileToStorage(e.target.files[0]);
-                            if (url) handleUpdateBlockItem(block.id, i, 'icon', url);
-                          }} />
-                        </label>
-                        <input type="text" placeholder="Feature Title" value={item.title} onChange={e => handleUpdateBlockItem(block.id, i, 'title', e.target.value)} className="w-full bg-transparent border-b border-white/10 text-sm text-white font-bold focus:outline-none focus:border-cyan-500 pb-1" />
-                        <textarea placeholder="Feature description..." value={item.desc} onChange={e => handleUpdateBlockItem(block.id, i, 'desc', e.target.value)} className="w-full bg-transparent text-xs text-gray-400 focus:outline-none resize-none h-16"></textarea>
-                      </div>
-                    ))}
+              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-black/20">
+
+                {/* 🚀 DYNAMIC BOX 5: NICHE SPECIFIC FIELDS */}
+                {block.customFields && Object.keys(block.customFields).length > 0 && (
+                  <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-lg p-4 space-y-3 md:col-span-2">
+                    <h4 className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest mb-4 flex items-center gap-2"><Sparkles size={12} /> Box 5: Niche Specific Data</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {Object.keys(block.customFields).map(fieldKey => (
+                        <div key={fieldKey}>
+                          <label className="block text-xs font-bold text-gray-400 uppercase mb-2">
+                            {fieldKey.replace(/([A-Z])/g, ' $1').trim()}
+                          </label>
+                          <input
+                            type="text"
+                            value={block.customFields[fieldKey]}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setPageData(prev => ({
+                                ...prev,
+                                blocks: prev.blocks.map(b => b.id === block.id ? { ...b, customFields: { ...b.customFields, [fieldKey]: val } } : b)
+                              }));
+                            }}
+                            className="w-full bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500"
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
-                {block.type === 'about' && (
-                  <div className="space-y-3">
-                    <textarea placeholder="Write a compelling story about your brand or service..." className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none h-24 resize-none"></textarea>
-                    <div className="w-full h-16 border border-dashed border-white/20 rounded-xl flex items-center justify-center text-sm text-gray-500 hover:text-cyan-400 hover:border-cyan-500 cursor-pointer transition-colors bg-black/50"><Upload size={16} className="mr-2" /> Add Team Image or Office Video</div>
+
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Box 1: Main Content</h4>
+                  <input type="text" placeholder="Headline" value={block.content?.headline || ''} onChange={e => handleUpdateBlockData(block.id, 'content', 'headline', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
+                  <input type="text" placeholder="Sub-headline" value={block.content?.subheadline || ''} onChange={e => handleUpdateBlockData(block.id, 'content', 'subheadline', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
+                  <textarea placeholder="Description" rows="3" value={block.content?.description || ''} onChange={e => handleUpdateBlockData(block.id, 'content', 'description', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500 resize-none" />
+                </div>
+
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Box 2: Media Assets</h4>
+                  <button className="w-full bg-black/50 border border-white/10 border-dashed rounded p-4 text-gray-400 hover:text-cyan-400 hover:border-cyan-500 transition-colors flex flex-col items-center gap-2">
+                    <ImageIcon size={20} /> <span className="text-xs">Select from Media Library</span>
+                  </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button className="bg-black/50 border border-white/10 rounded p-3 text-gray-400 text-xs flex items-center justify-center gap-2 hover:border-white/30"><Video size={14} /> Add Video</button>
+                    <button className="bg-black/50 border border-white/10 rounded p-3 text-gray-400 text-xs flex items-center justify-center gap-2 hover:border-white/30"><Box size={14} /> Attach 3D Model</button>
                   </div>
-                )}
-                {block.type === 'trust' && (
-                  <div className="p-8 border border-dashed border-white/20 rounded-xl text-center text-gray-500 hover:border-cyan-500/50 hover:text-cyan-400 cursor-pointer transition-colors">
-                    <Upload size={24} className="mx-auto mb-2" /> Upload Multiple Partner Logos or Certifications (PNG/SVG)
+                </div>
+
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Box 3: Action Buttons</h4>
+                  <div className="flex gap-2">
+                    <input type="text" placeholder="Button Text" value={block.cta?.buttonText || ''} onChange={e => handleUpdateBlockData(block.id, 'cta', 'buttonText', e.target.value)} className="w-1/3 bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
+                    <input type="text" placeholder="Target Link URL" value={block.cta?.buttonLink || ''} onChange={e => handleUpdateBlockData(block.id, 'cta', 'buttonLink', e.target.value)} className="flex-1 bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
                   </div>
-                )}
-                {block.type === 'faq' && (
-                  <div className="space-y-3">
-                    {block.items?.map((item, i) => (
-                      <div key={i} className="flex gap-3">
-                        <input type="text" placeholder="Question?" value={item.q} onChange={e => handleUpdateBlockItem(block.id, i, 'q', e.target.value)} className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
-                        <input type="text" placeholder="Answer..." value={item.a} onChange={e => handleUpdateBlockItem(block.id, i, 'a', e.target.value)} className="flex-[2] bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
-                      </div>
-                    ))}
+                  <div className="flex gap-2">
+                    <input type="text" placeholder="Secondary Text" value={block.cta?.secondaryText || ''} onChange={e => handleUpdateBlockData(block.id, 'cta', 'secondaryText', e.target.value)} className="w-1/3 bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
+                    <input type="text" placeholder="Secondary Link" value={block.cta?.secondaryLink || ''} onChange={e => handleUpdateBlockData(block.id, 'cta', 'secondaryLink', e.target.value)} className="flex-1 bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
                   </div>
-                )}
-                {block.type === 'products' && (
-                  <div className="text-center p-6 bg-cyan-500/5 border border-cyan-500/20 rounded-xl">
-                    <PackageSearch size={32} className="mx-auto text-cyan-400 mb-2" />
-                    <h4 className="text-white font-bold text-sm">Linked to E-Commerce Inventory</h4>
-                    <p className="text-xs text-gray-400 mb-4">Products matching this project will automatically render here.</p>
-                    <button onClick={() => setActiveTab('inventory')} className="text-xs font-bold text-white bg-cyan-600 px-4 py-2 rounded-lg hover:bg-cyan-500">Manage Inventory</button>
-                  </div>
-                )}
+                </div>
+
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Box 4: Style Options</h4>
+                  <select value={block.style?.animationType || 'fade-up'} onChange={e => handleUpdateBlockData(block.id, 'style', 'animationType', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded p-3 text-gray-300 text-sm outline-none focus:border-cyan-500 cursor-pointer">
+                    <option value="fade-up">Animation: Fade Up</option>
+                    <option value="3d-flip">Animation: 3D Flip</option>
+                    <option value="slide-right">Animation: Slide Right</option>
+                  </select>
+                  <select value={block.style?.alignment || 'left'} onChange={e => handleUpdateBlockData(block.id, 'style', 'alignment', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded p-3 text-gray-300 text-sm outline-none focus:border-cyan-500 cursor-pointer">
+                    <option value="left">Text Align: Left</option>
+                    <option value="center">Text Align: Center</option>
+                    <option value="right">Text Align: Right</option>
+                  </select>
+                </div>
+
               </div>
             )}
           </div>
@@ -810,7 +1092,7 @@ export default function Dashboard() {
         {pageData.blocks.length === 0 && (
           <div className="h-40 border-2 border-dashed border-white/10 rounded-2xl flex items-center justify-center text-gray-500 flex-col gap-2">
             <Layers size={32} className="opacity-50" />
-            <p>Your canvas is empty. Add a block above to begin building.</p>
+            <p>Your canvas is empty. Select a Category in Phase 1 to auto-generate sections.</p>
           </div>
         )}
       </div>
@@ -832,7 +1114,6 @@ export default function Dashboard() {
           <p className="text-sm text-gray-400">Control the global structure, aesthetics, and 3D physics of your page.</p>
         </div>
 
-        {/* THEME BANNER */}
         <div className={`w-full shrink-0 h-32 rounded-2xl relative overflow-hidden flex items-center justify-between p-8 border border-white/10 shadow-lg group`}>
           <div className={`absolute inset-0 bg-gradient-to-br ${themeDetails.bg} opacity-80 transition-transform duration-700 group-hover:scale-105`}></div>
           <div className="relative z-10">
@@ -846,7 +1127,6 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 flex-1">
-          {/* LAYOUT & ANIMATION CONTROLS */}
           <div className="space-y-6">
             <div className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-4">
               <h4 className="text-sm font-bold text-white border-b border-white/10 pb-2 mb-4 flex items-center gap-2"><LayoutTemplate size={16} className="text-cyan-400" /> Layout Configuration</h4>
@@ -979,16 +1259,21 @@ export default function Dashboard() {
     <div className="flex flex-col h-full space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-2xl font-bold text-white mb-1">Media Manager</h3>
-          <p className="text-sm text-gray-400">Upload and manage your PNGs, Images, and Videos here.</p>
+          <h3 className="text-2xl font-bold text-white mb-1">Global Media Manager</h3>
+          <p className="text-sm text-gray-400">Your central library for Images, Videos, and 3D Models (.glb).</p>
+        </div>
+        <div className="flex gap-2">
+          <button className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-bold text-white flex items-center gap-2 hover:bg-white/10"><ImageIcon size={14} /> Image Library</button>
+          <button className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-bold text-white flex items-center gap-2 hover:bg-white/10"><Video size={14} /> Video Assets</button>
+          <button className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-bold text-white flex items-center gap-2 hover:bg-white/10"><Box size={14} /> 3D Models</button>
         </div>
       </div>
 
       <div className="flex-1 bg-white/5 border border-white/10 rounded-2xl p-6 grid grid-cols-2 md:grid-cols-4 gap-6 overflow-y-auto custom-scrollbar">
         <label className="border-2 border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center p-6 text-gray-500 hover:border-cyan-500 hover:text-cyan-400 transition-colors cursor-pointer min-h-[150px]">
           <DownloadCloud size={32} className="mb-2" />
-          <span className="text-sm font-bold text-center">Click to Upload<br />MP4, PNG, JPG</span>
-          <input type="file" accept="image/*,video/mp4" multiple className="hidden" onChange={async (e) => {
+          <span className="text-sm font-bold text-center">Click to Upload<br />PNG, MP4, GLB</span>
+          <input type="file" accept="image/*,video/mp4,.glb,.gltf" multiple className="hidden" onChange={async (e) => {
             const files = Array.from(e.target.files);
             let newMedia = [...(pageData.media || [])];
             for (let file of files) {
@@ -1270,6 +1555,7 @@ export default function Dashboard() {
             <div className="max-w-[1400px] mx-auto animate-in fade-in zoom-in-[0.98] duration-300 h-full">
               {activeEditorStep === 'setup' && renderStep1Setup()}
               {activeEditorStep === 'brand' && renderStep2Brand()}
+              {activeEditorStep === 'category' && renderStepCategory()}
               {activeEditorStep === 'hero' && renderStep3Hero()}
               {activeEditorStep === 'blocks' && renderStep4Blocks()}
               {activeEditorStep === 'theme' && renderStep5Theme()}
@@ -1308,6 +1594,13 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#050505] text-gray-100 flex font-sans selection:bg-cyan-500/30 overflow-hidden">
       <aside className="w-16 lg:w-64 bg-[#0A0A0E] border-r border-white/5 flex flex-col relative z-30 transition-all duration-300 shadow-[10px_0_30px_rgba(0,0,0,0.3)]">
+
+        <div className="p-4 border-b border-white/5 hidden lg:block shrink-0">
+          <button onClick={() => window.location.href = '/'} className="flex items-center justify-center gap-2 text-gray-400 hover:text-white transition-colors text-sm font-bold w-full bg-white/5 hover:bg-white/10 px-4 py-3 rounded-xl">
+            <ArrowLeft size={16} /> Back to Homepage
+          </button>
+        </div>
+
         <div className="h-20 flex items-center justify-center lg:justify-start lg:px-6 border-b border-white/5 shrink-0">
           <Globe className="text-cyan-500 w-8 h-8" />
           <span className="hidden lg:block text-xl font-black ml-3 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">3D <span className="text-white font-light">UNIVERSE</span></span>

@@ -1,7 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://qqayisixsrhotlnclfjo.supabase.co';
-const supabaseAnonKey = 'sb_publishable_gDKCYTby3vYKCqxMevLcxw_h1Zx3mTa';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// This exact line is what Dashboard.jsx is looking for!
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error("Missing Supabase Environment Variables");
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);

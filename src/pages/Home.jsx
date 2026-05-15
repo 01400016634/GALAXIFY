@@ -15,32 +15,26 @@ const Home = () => {
   const [openFaq, setOpenFaq] = useState(null);
   const navigate = useNavigate();
 
-  // 👇 1. Get both login AND currentUser from AuthContext
-  const { login, currentUser } = useAuth();
+  // We ONLY need currentUser here. 
+  const { currentUser } = useAuth();
 
   const toggleFaq = (index) => {
     setOpenFaq(openFaq === index ? null : index);
   };
 
-  // 👇 2. Dynamic Button Logic: If logged in, go to Dashboard. If not, trigger Login.
-  const handleCtaClick = async () => {
+  // Completely replace the old handleCtaClick with this safe, simple version
+  const handleCtaClick = () => {
     if (currentUser) {
       navigate('/dashboard');
     } else {
-      try {
-        await login();
-        // The redirect to dashboard is handled in Login.jsx or usually happens 
-        // automatically once currentUser is detected, but we add it here for safety.
-        navigate('/dashboard');
-      } catch (error) {
-        console.error("Login failed:", error);
-      }
+      navigate('/login');
     }
   };
 
   const glassCard = "bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 hover:bg-white/10 transition-colors shadow-[0_4px_30px_rgba(0,0,0,0.1)]";
 
   return (
+    // ... keep the rest of your UI exactly the same ...
     <div className="relative w-full h-screen bg-black overflow-hidden selection:bg-cyan-500/30 text-slate-200 font-sans">
 
       {/* BACKGROUND: 3D Solar System Scene */}

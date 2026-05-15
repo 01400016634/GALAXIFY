@@ -4,9 +4,29 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken'); // You need this for the Owner Login!
 require('dotenv').config();
 
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+
+// Configure storage to save directly into your frontend themes folder
+const themeStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // This points up one level from 'server', then into 'src/themes'
+    const dir = path.join(__dirname, '../src/themes');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, file.originalname); // Keeps the exact name (e.g., LavaTheme.jsx)
+  }
+});
+const uploadTheme = multer({ storage: themeStorage });
 const app = express();
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
 app.use(express.json());
+app.use('/themes', express.static(path.join(__dirname, '../src/themes')));
 
 // 🗄️ MONGODB CONNECTION
 mongoose.connect(process.env.MONGO_URI)
@@ -41,7 +61,7 @@ const portfolioSchema = new mongoose.Schema({
 const Portfolio = mongoose.model('Portfolio', portfolioSchema);
 
 const settingSchema = new mongoose.Schema({
-  siteName: { type: String, default: 'GALAXIFY' },
+  siteName: { type: String, default: '3D UNIVERSE' },
   heroTagline: { type: String, default: 'Build immersive web experiences' },
   maintenanceMode: { type: Boolean, default: false },
   homeSections: {
@@ -66,9 +86,13 @@ const themeSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 const Theme = mongoose.model('Theme', themeSchema);
-
+const workflowSchema = new mongoose.Schema({
+  type: { type: String, default: 'master_workflow' },
+  phases: { type: Array, default: [] } // Stores the Phases -> Steps -> Fields structure
+}, { timestamps: true });
+const Workflow = mongoose.model('Workflow', workflowSchema);
 // ==========================================
-// 🤝 FIREBASE TO MONGODB SYNC ROUTE
+// 🤝 SUPABASE TO MONGODB SYNC & MIGRATION ROUTE
 // ==========================================
 app.post('/api/owner/sync-user', async (req, res) => {
   const { name, email, uid } = req.body;
@@ -76,24 +100,33 @@ app.post('/api/owner/sync-user', async (req, res) => {
   if (!uid) return res.status(400).json({ error: 'UID is required' });
 
   try {
-    // Use findOneAndUpdate with upsert to prevent race conditions and crashes
-    const user = await User.findOneAndUpdate(
-      { uid: uid },
-      {
-        $setOnInsert: { // Only set these fields if the user is brand new
-          name: name || "Galaxify User",
-          email: email || `${uid}@no-email.com`, // Fallback so MongoDB doesn't crash on null emails
-          plan: 'free',
-          status: 'active'
-        }
-      },
-      { new: true, upsert: true }
-    );
+    // 1. Find user by EMAIL first (This prevents the Duplicate Key Crash!)
+    let user = await User.findOne({ email: email });
+
+    if (user) {
+      // 2. If the email exists, but it has the old Firebase UID, update it to the new Supabase ID!
+      if (user.uid !== uid) {
+        user.uid = uid;
+        await user.save();
+        console.log(`✅ Migrated user ${email} to new Supabase UID`);
+      }
+    } else {
+      // 3. If no account exists with this email, create a brand new one
+      user = await User.create({
+        uid: uid,
+        name: name || "3D Universe User",
+        email: email || `${uid}@no-email.com`,
+        plan: 'free',
+        status: 'active'
+      });
+      console.log(`✅ Created brand new user ${email} in MongoDB`);
+    }
 
     res.status(200).json({ message: 'User synced successfully', user });
   } catch (error) {
-    console.error("Sync Error:", error);
-    res.status(500).json({ error: 'Failed to sync user' });
+    // This will print the exact database error to your terminal if it fails again
+    console.error("🔥 MongoDB Sync Error:", error);
+    res.status(500).json({ error: 'Failed to sync user', details: error.message });
   }
 });
 // ==========================================
@@ -170,13 +203,14 @@ app.post('/api/owner/login', (req, res) => {
     res.status(401).json({ error: 'Invalid admin credentials' });
   }
 });
-
-// 2. Fetch Dashboard Data (WAS MISSING - THIS FIXES THE USER HUB)
+// 2. Fetch Dashboard Data
 app.get('/api/owner/dashboard', async (req, res) => {
   try {
     const users = await User.find().sort({ createdAt: -1 });
     const themes = await Theme.find();
     const announcements = await Announcement.find();
+    const projects = await Portfolio.find().sort({ createdAt: -1 });
+
     let settings = await Setting.findOne();
     if (!settings) settings = await Setting.create({});
 
@@ -186,13 +220,12 @@ app.get('/api/owner/dashboard', async (req, res) => {
         premiumUsers: users.filter(u => u.plan !== 'free').length,
         activeThemes: themes.filter(t => t.isActive).length
       },
-      users, themes, announcements, settings
+      users, themes, announcements, settings, projects
     });
   } catch (error) {
     res.status(500).json({ error: 'Dashboard failed to load' });
   }
 });
-
 // 3. User Actions (Upgrade Plan & Delete)
 app.put('/api/owner/users/:id/plan', async (req, res) => {
   await User.findByIdAndUpdate(req.params.id, { plan: req.body.plan });
@@ -226,6 +259,84 @@ app.post('/api/owner/announcements', async (req, res) => {
 app.delete('/api/owner/announcements/:id', async (req, res) => {
   await Announcement.findByIdAndDelete(req.params.id);
   res.status(200).json({ message: 'Broadcast deleted' });
+});
+
+// 6. Theme File Management (NEW)
+app.get('/api/owner/themes-list', (req, res) => {
+  const themesPath = path.join(__dirname, '../src/themes');
+  fs.readdir(themesPath, (err, files) => {
+    if (err) return res.status(500).json({ error: "Cannot read themes folder" });
+
+    // Only return .jsx files and strip the extension for clean names
+    const themes = files
+      .filter(file => file.endsWith('.jsx'))
+      .map(file => file.replace('.jsx', ''));
+
+    res.status(200).json({ themes });
+  });
+});
+
+app.post('/api/owner/upload-theme', uploadTheme.single('themeFile'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+  res.status(200).json({ message: "Theme uploaded and integrated successfully!" });
+});
+// Set Custom Domain for a Project
+app.put('/api/owner/projects/:id/domain', async (req, res) => {
+  try {
+    await Portfolio.findByIdAndUpdate(req.params.id, { customDomain: req.body.customDomain });
+    res.status(200).json({ message: 'Domain updated' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update domain' });
+  }
+});
+
+// Delete a Project
+app.delete('/api/owner/projects/:id', async (req, res) => {
+  try {
+    await Portfolio.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: 'Project deleted' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete project' });
+  }
+});
+// ==========================================
+// 🏗️ DYNAMIC WORKFLOW BUILDER ROUTES
+// ==========================================
+
+// 1. GET the current workflow structure (Used by BOTH User & Admin)
+app.get('/api/workflow-config', async (req, res) => {
+  try {
+    let config = await Workflow.findOne({ type: 'master_workflow' });
+
+    // If database is empty, return an empty array so the frontend doesn't crash
+    if (!config) return res.status(200).json([]);
+
+    res.status(200).json(config.phases);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch workflow configuration' });
+  }
+});
+
+// 2. UPDATE the workflow structure (Secure Admin Route)
+app.post('/api/owner/update-workflow', async (req, res) => {
+  const { phases } = req.body;
+
+  try {
+    // Upsert: Find the master_workflow and update it, or create it if it doesn't exist
+    const updatedConfig = await Workflow.findOneAndUpdate(
+      { type: 'master_workflow' },
+      { phases: phases },
+      { upsert: true, new: true }
+    );
+
+    res.status(200).json({
+      message: '🚀 SYSTEM DEPLOYED: User dashboards updated in real-time!',
+      config: updatedConfig
+    });
+  } catch (error) {
+    console.error("Workflow Save Error:", error);
+    res.status(500).json({ error: 'Failed to save workflow to database' });
+  }
 });
 // ==========================================
 // 💳 INSTANT MOCK UPGRADE ROUTE

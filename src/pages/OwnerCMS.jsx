@@ -14,6 +14,23 @@ const OwnerCMS = () => {
   const [loading, setLoading] = useState(true);
   const [showThemeModal, setShowThemeModal] = useState(false);
 
+  // 🚀 NEW: THEME CATEGORIES STATE
+  const [categories, setCategories] = useState([
+    'E-Commerce',
+    'Digital Gadgets',
+    'Learning Platform',
+    'Real Estate',
+    'Agency/Service',
+    'Personal Portfolio'
+  ]);
+
+  const handleAddNewCategory = () => {
+    const newCat = prompt("Enter a new Theme Category:");
+    if (newCat && newCat.trim() !== "") {
+      setCategories([...categories, newCat.trim()]);
+    }
+  };
+
   // REAL-TIME STATE
   const [data, setData] = useState({
     metrics: {},
@@ -22,7 +39,7 @@ const OwnerCMS = () => {
     themes: [],
     announcements: [],
     settings: {
-      siteName: 'GALAXIFY AI',
+      siteName: '3D UNIVERSE',
       heroTagline: 'Build immersive web experiences',
       maintenanceMode: false,
       homepageSections: ['Features', 'Pricing', 'Themes', 'FAQ'],
@@ -128,26 +145,81 @@ const OwnerCMS = () => {
     fetchDashboard();
   };
 
-  const handleCreateTheme = async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const payload = {
-      name: formData.get('name'),
-      category: formData.get('category'),
-      isPremium: formData.get('isPremium') === 'on',
-      supportsVideoBg: formData.get('supportsVideoBg') === 'on'
-    };
+  // --- NEW PROJECT HANDLERS ---
+  const handleCopyLink = (username) => {
+    if (!username) return alert("User hasn't set a username yet!");
+    const url = `${window.location.origin}/p/${username}`;
+    navigator.clipboard.writeText(url);
+    alert(`🔗 Link copied: ${url}`);
+  };
+
+  const handleSetDomain = async (projectId, currentDomain) => {
+    const newDomain = prompt("Enter custom domain (e.g., www.mywebsite.com):", currentDomain || "");
+    if (newDomain === null) return; // User clicked cancel
 
     try {
-      await fetch('http://localhost:5001/api/owner/themes', {
-        method: 'POST',
+      await fetch(`http://localhost:5001/api/owner/projects/${projectId}/domain`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ customDomain: newDomain })
       });
-      setShowThemeModal(false);
-      fetchDashboard();
+      fetchDashboard(); // Refresh data
     } catch (err) {
-      alert("Failed to save theme.");
+      alert("Failed to update domain");
+    }
+  };
+
+  const handleDeleteProject = async (projectId) => {
+    if (!window.confirm("🚨 Delete this project permanently? This cannot be undone.")) return;
+    try {
+      await fetch(`http://localhost:5001/api/owner/projects/${projectId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
+      });
+      fetchDashboard(); // Refresh data
+    } catch (err) {
+      alert("Failed to delete project");
+    }
+  };
+
+  const handleThemeUpload = async (e) => {
+    e.preventDefault();
+
+    // 1. Get the file
+    const fileInput = e.target.themeFile;
+    const file = fileInput.files[0];
+
+    if (!file) return alert("Please select a .jsx file to upload.");
+    if (!file.name.endsWith('.jsx')) return alert("Only .jsx files are allowed.");
+
+    // 2. Pack everything (File + Text) into a FormData object
+    const formData = new FormData();
+    formData.append('themeFile', file);
+    formData.append('name', e.target.name.value);
+    formData.append('category', e.target.category.value);
+    formData.append('isPremium', e.target.isPremium.checked);
+    formData.append('supportsVideoBg', e.target.supportsVideoBg.checked);
+
+    try {
+      // 3. Send it to the server
+      const response = await fetch('http://localhost:5001/api/owner/upload-theme', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+          // ⚠️ DO NOT set Content-Type here! The browser does it automatically for FormData.
+        },
+        body: formData
+      });
+
+      if (response.ok) {
+        alert("🚀 SYSTEM_UPDATE: New 3D Theme Injected into Core!");
+        setShowThemeModal(false);
+        fetchDashboard(); // Refresh UI
+      } else {
+        alert("Upload failed on the server.");
+      }
+    } catch (err) {
+      alert("Infection failed: Could not write to src/themes. Is the server running?");
     }
   };
 
@@ -253,7 +325,7 @@ const OwnerCMS = () => {
       <motion.aside initial={{ x: -300 }} animate={{ x: 0 }} className="w-72 border-r border-white/5 bg-black/40 backdrop-blur-xl flex flex-col relative z-20">
         <div className="p-8 border-b border-white/5 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#ff003c] to-transparent opacity-50" />
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3 tracking-widest"><ShieldAlert className="text-[#ff003c]" size={28} /> GALAXIFY AI</h1>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-3 tracking-widest"><ShieldAlert className="text-[#ff003c]" size={28} /> 3D UNIVERSE</h1>
           <p className="text-[10px] text-[#ff003c] font-mono mt-2 uppercase tracking-[0.3em]">Owner CMS</p>
         </div>
 
@@ -363,18 +435,52 @@ const OwnerCMS = () => {
             {activeTab === 'projects' && (
               <motion.div key="projects" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
                 <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
-                  <h3 className="text-white font-bold text-xl mb-6">User Landing Pages</h3>
+                  <h3 className="text-white font-bold text-xl mb-6 flex items-center gap-2"><Globe className="text-[#ff003c]" /> User Landing Pages</h3>
                   <table className="w-full text-left">
-                    <thead className="bg-white/5 border-b border-white/10 text-xs text-slate-400 uppercase">
-                      <tr><th className="p-4">Project Name</th><th className="p-4">Owner ID</th><th className="p-4">Status</th><th className="p-4 text-right">Action</th></tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b border-white/5 hover:bg-white/5">
-                        <td className="p-4 font-bold text-white">Sample E-Commerce Store</td>
-                        <td className="p-4 text-slate-500">usr_12345</td>
-                        <td className="p-4"><span className="text-green-400 bg-green-500/10 px-2 py-1 rounded text-xs">Published</span></td>
-                        <td className="p-4 text-right"><button className="text-red-500 hover:text-red-400"><Trash2 size={16} /></button></td>
+                    <thead className="bg-white/5 border-b border-white/10 text-xs text-slate-400 uppercase tracking-widest">
+                      <tr>
+                        <th className="p-4">Project / Owner</th>
+                        <th className="p-4">Status</th>
+                        <th className="p-4">Custom Domain</th>
+                        <th className="p-4 text-right">Actions</th>
                       </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {data.projects && data.projects.length > 0 ? (
+                        data.projects.map((project) => (
+                          <tr key={project._id} className="hover:bg-white/5 transition-colors group">
+                            <td className="p-4">
+                              <div className="font-bold text-white text-sm">{project.fullName || "Untitled Project"}</div>
+                              <div className="text-xs text-slate-500 mt-1">@{project.username || 'no-username'}</div>
+                            </td>
+                            <td className="p-4">
+                              <span className="text-green-400 bg-green-500/10 border border-green-500/20 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Active</span>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <span className={project.customDomain ? "text-cyan-400 font-mono text-sm" : "text-slate-600 text-sm italic"}>
+                                  {project.customDomain || 'Not Configured'}
+                                </span>
+                                <button onClick={() => handleSetDomain(project._id, project.customDomain)} className="text-slate-500 hover:text-white transition-colors bg-black/50 p-1.5 rounded-md border border-white/10">
+                                  <Edit size={12} />
+                                </button>
+                              </div>
+                            </td>
+                            <td className="p-4 text-right flex justify-end gap-2">
+                              <button onClick={() => handleCopyLink(project.username)} className="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 text-xs bg-blue-400/10 px-3 py-1.5 rounded-lg border border-blue-400/20" title="Copy Public Link">
+                                <Globe size={14} /> Link
+                              </button>
+                              <button onClick={() => handleDeleteProject(project._id)} className="text-red-500 hover:text-red-400 bg-red-500/10 p-1.5 rounded-lg border border-red-500/20 transition-colors" title="Delete Project">
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="4" className="p-10 text-center text-slate-500">No published projects found in the database.</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -466,16 +572,50 @@ const OwnerCMS = () => {
                   <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
                     <div className="bg-[#0a0a0a] border border-[#ff003c]/30 rounded-2xl p-6 w-full max-w-md">
                       <h3 className="text-white font-bold text-xl mb-4">Upload/Edit Theme</h3>
-                      <form onSubmit={handleCreateTheme} className="space-y-4">
-                        <input type="text" name="name" placeholder="Theme Name" className="w-full bg-white/5 border border-white/10 rounded p-3 text-white focus:border-[#ff003c]" required />
-                        <input type="text" name="category" placeholder="Category (e.g., Cyber, Minimal)" className="w-full bg-white/5 border border-white/10 rounded p-3 text-white focus:border-[#ff003c]" required />
+
+                      <form onSubmit={handleThemeUpload} className="space-y-4">
+
+                        <input type="text" name="name" placeholder="Theme Name (e.g., The Tech-Nexus)" className="w-full bg-white/5 border border-white/10 rounded p-3 text-white focus:border-[#ff003c]" required />
+
+                        {/* 🚀 THE NEW DYNAMIC CATEGORY DROPDOWN */}
+                        <div className="flex gap-2">
+                          <select
+                            name="category"
+                            className="flex-1 bg-white/5 border border-white/10 rounded p-3 text-white focus:border-[#ff003c] outline-none cursor-pointer"
+                            required
+                            defaultValue=""
+                          >
+                            <option value="" disabled>Select a Category...</option>
+                            {categories.map((cat, i) => (
+                              <option key={i} value={cat} className="bg-slate-900 text-white">
+                                {cat}
+                              </option>
+                            ))}
+                          </select>
+
+                          <button
+                            type="button"
+                            onClick={handleAddNewCategory}
+                            className="px-4 bg-[#ff003c]/10 hover:bg-[#ff003c]/20 text-[#ff003c] rounded-lg text-sm font-bold border border-[#ff003c]/30 transition-colors whitespace-nowrap"
+                          >
+                            + Add New
+                          </button>
+                        </div>
+
+                        <div className="bg-white/5 border border-white/10 rounded p-3">
+                          <label className="text-xs text-slate-400 block mb-2 uppercase font-bold">Select Theme File (.jsx)</label>
+                          <input type="file" name="themeFile" accept=".jsx" className="text-white text-sm w-full" required />
+                        </div>
+
                         <label className="flex items-center gap-3 text-white cursor-pointer"><input type="checkbox" name="isPremium" /> Requires PRO Subscription</label>
-                        <label className="flex items-center gap-3 text-white cursor-pointer"><input type="checkbox" name="supportsVideoBg" defaultChecked /> Enable Video Background Upload</label>
+                        <label className="flex items-center gap-3 text-white cursor-pointer"><input type="checkbox" name="supportsVideoBg" defaultChecked /> Enable Video Background</label>
+
                         <div className="flex justify-end gap-2 mt-6">
                           <button type="button" onClick={() => setShowThemeModal(false)} className="px-4 py-2 text-slate-400">Cancel</button>
-                          <button type="submit" className="px-4 py-2 bg-[#ff003c] text-white font-bold rounded">Save Theme</button>
+                          <button type="submit" className="px-4 py-2 bg-[#ff003c] text-white font-bold rounded shadow-[0_0_15px_rgba(255,0,60,0.4)]">Upload Theme</button>
                         </div>
                       </form>
+
                     </div>
                   </div>
                 )}
@@ -506,7 +646,7 @@ const OwnerCMS = () => {
                 <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl relative">
                   <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Settings className="text-[#ff003c]" /> Core Configuration</h3>
                   <form className="space-y-4">
-                    <div><label className="text-[10px] text-slate-400 uppercase font-bold mb-2 block">System Identity</label><input type="text" defaultValue="GALAXIFY AI" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white" /></div>
+                    <div><label className="text-[10px] text-slate-400 uppercase font-bold mb-2 block">System Identity</label><input type="text" defaultValue="3D UNIVERSE" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white" /></div>
                     <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
                       <div><h4 className="text-sm font-bold text-white">Maintenance Mode</h4></div>
                       <input type="checkbox" className="w-5 h-5 accent-[#ff003c]" />
