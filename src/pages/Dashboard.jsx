@@ -9,7 +9,7 @@ import {
   AlignLeft, Play, Wand2, Smartphone, Monitor, Type, Palette, Video, Share2, Search,
   Zap, Layers, Sparkles, Sliders, Copy, ChevronsUpDown, ArrowRight, ArrowLeft, Users, Activity,
   ArrowUpRight, Instagram, MessageSquare, FileText, DownloadCloud, Fingerprint, User, Crown, ExternalLink,
-  LayoutDashboard, PlusCircle, Edit
+  LayoutDashboard, PlusCircle, Edit, LogOut
 } from 'lucide-react';
 
 const SOCIAL_PLATFORMS = [
@@ -272,6 +272,7 @@ export default function Dashboard() {
   const { currentUser } = useAuth();
   const [userTier, setUserTier] = useState('free');
   const [activeTab, setActiveTab] = useState('analytics');
+  const [modalCategory, setModalCategory] = useState('All');
   const [activeEditorStep, setActiveEditorStep] = useState('setup');
   const [syncStatus, setSyncStatus] = useState('Saved');
   const [previewMode, setPreviewMode] = useState('desktop');
@@ -447,6 +448,18 @@ export default function Dashboard() {
 
     const publicUrl = `${window.location.origin}/3DUNIVERSE/${cleanUrlSlug}?mode=preview`;
     window.open(publicUrl, '_blank');
+  };
+
+  const handleSignOut = async () => {
+    if (window.confirm("Are you sure you want to sign out of 3D UNIVERSE?")) {
+      try {
+        await supabase.auth.signOut();
+        window.location.href = '/'; // Redirects instantly to your login or landing homepage
+      } catch (error) {
+        console.error("Error signing out:", error);
+        alert("Failed to sign out cleanly. Please clear browser cache.");
+      }
+    }
   };
 
   const loadPageForEditing = (page) => {
@@ -1100,12 +1113,105 @@ export default function Dashboard() {
   );
 
   const renderStep5Theme = () => {
-    const themeDetails = [
-      { id: 'theme-1', name: 'Cyber Neon', style: 'Dark & Glowing', bg: 'from-pink-600/40 to-purple-900' },
-      { id: 'theme-2', name: 'Glass Corporate', style: 'Clean & Blurred', bg: 'from-gray-700 to-black' },
-      { id: 'theme-3', name: 'Immersive VR', style: 'Full 3D Space', bg: 'from-cyan-600/40 to-black' },
-      { id: 'theme-4', name: 'E-Comm Flow', style: 'High Conversion', bg: 'from-emerald-600/40 to-black' }
-    ].find(t => t.id === pageData.setup.themeId) || { name: 'Custom Theme', style: 'User Defined', bg: 'from-cyan-600/40 to-black' };
+    // 🚀 Complete Master Definition mapping for all 15 AAA 3D environments
+    const systemThemes = [
+      { id: 'theme-1', name: 'Cyber Neon Mall', style: 'Dark & Glowing (E-Commerce)', bg: 'from-pink-600/30 via-purple-900/40 to-black', element: 'neon-grid' },
+      { id: 'theme-2', name: 'Space Market', style: 'Galactic & Orbital (E-Commerce)', bg: 'from-blue-600/30 via-slate-900 to-black', element: 'orbit-rings' },
+      { id: 'theme-3', name: 'Golden Prestige', style: 'Luxury & Reflective (E-Commerce) [PRO]', bg: 'from-amber-600/20 via-stone-900 to-black', element: 'luxury-gems' },
+      { id: 'theme-4', name: 'Cyber Lab', style: 'Computational Field (Digital Gadgets)', bg: 'from-cyan-600/30 via-zinc-900 to-black', element: 'matrix-nodes' },
+      { id: 'theme-5', name: 'Tron Grid', style: 'Vector Landscape (Digital Gadgets)', bg: 'from-teal-600/30 via-emerald-950/20 to-black', element: 'vector-lines' },
+      { id: 'theme-6', name: 'Portal Dimension', style: 'Energy Vortex Core (Digital Gadgets) [PRO]', bg: 'from-purple-600/30 via-indigo-950 to-black', element: 'vortex-core' },
+      { id: 'theme-7', name: 'Skyline Estate', style: 'Holographic City (Real Estate)', bg: 'from-sky-600/30 via-slate-900 to-black', element: 'city-wireframe' },
+      { id: 'theme-8', name: 'Dream Hall', style: 'Minimalist Floating (Real Estate)', bg: 'from-violet-600/20 via-neutral-900 to-black', element: 'minimal-blocks' },
+      { id: 'theme-9', name: 'Frozen Platinum', style: 'Crystalline Glacial (Real Estate) [PRO]', bg: 'from-blue-400/20 via-indigo-950 to-black', element: 'crystal-shards' },
+      { id: 'theme-10', name: 'Cosmic Library', style: 'Swirling Information (Learning)', bg: 'from-fuchsia-600/30 via-purple-950 to-black', element: 'stars-orbit' },
+      { id: 'theme-11', name: 'Ai Sphere', style: 'Neural Node Networks (Learning)', bg: 'from-cyan-500/20 via-slate-900 to-black', element: 'neural-mesh' },
+      { id: 'theme-12', name: 'Genetic Matrix', style: 'Biological Helix (Learning) [PRO]', bg: 'from-emerald-500/20 via-stone-900 to-black', element: 'dna-helix' },
+      { id: 'theme-13', name: 'Command Center', style: 'Tactical Mainframe (Agency)', bg: 'from-red-600/20 via-zinc-900 to-black', element: 'tactical-grid' },
+      { id: 'theme-14', name: 'Crystal Vault', style: 'Refractive Geometric (Agency)', bg: 'from-indigo-500/20 via-slate-900 to-black', element: 'refractive-shapes' },
+      { id: 'theme-15', name: 'Dark Matter', style: 'Volumetric Physics (Agency) [PRO]', bg: 'from-purple-900/40 via-neutral-950 to-black', element: 'physics-cloud' }
+    ];
+
+    const themeDetails = systemThemes.find(t => t.id === pageData.setup?.themeId) || systemThemes[0];
+
+    // 🔮 Live CSS Simulation Engine mimicking Three.js environmental render behaviors
+    const renderLivePreviewBackground = (elementKey) => {
+      return (
+        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden select-none opacity-40 group-hover:opacity-60 transition-opacity duration-500">
+          {elementKey === 'neon-grid' && (
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#ff003c15_1px,transparent_1px),linear-gradient(to_bottom,#00ffff15_1px,transparent_1px)] bg-[size:16px_24px] [transform:perspective(100px)_rotateX(45deg)] origin-bottom animate-pulse" />
+          )}
+          {elementKey === 'orbit-rings' && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-40 h-40 rounded-full border border-blue-500/20 border-dashed animate-spin [animation-duration:15s] relative flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full border border-cyan-400/10 border-dashed animate-spin [animation-duration:8s]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 absolute top-4 left-4 shadow-[0_0_12px_#00ffff]" />
+              </div>
+            </div>
+          )}
+          {elementKey === 'luxury-gems' && (
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.08)_0%,transparent_70%)]">
+              <div className="absolute bottom-4 left-1/4 w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping opacity-60" />
+              <div className="absolute bottom-12 right-1/3 w-2 h-2 bg-yellow-300 rounded-full animate-ping opacity-40 delay-300" />
+            </div>
+          )}
+          {elementKey === 'matrix-nodes' && (
+            <div className="absolute inset-x-0 top-0 h-48 flex justify-around opacity-40">
+              <div className="w-[1px] h-32 bg-gradient-to-b from-transparent via-cyan-500 to-transparent animate-pulse" />
+              <div className="w-[1px] h-40 bg-gradient-to-b from-transparent via-blue-500 to-transparent animate-pulse delay-200" />
+              <div className="w-[1px] h-24 bg-gradient-to-b from-transparent via-purple-500 to-transparent animate-pulse delay-500" />
+            </div>
+          )}
+          {elementKey === 'vector-lines' && (
+            <div className="absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(to_bottom,transparent,#00ffff15)] [transform:perspective(70px)_rotateX(55deg)] border-t border-cyan-500/40" />
+          )}
+          {elementKey === 'vortex-core' && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-28 h-28 rounded-full bg-purple-500/5 border border-purple-500/20 animate-pulse flex items-center justify-center">
+                <div className="w-14 h-14 rounded-full border-2 border-dashed border-cyan-400/30 animate-spin [animation-duration:6s]" />
+              </div>
+            </div>
+          )}
+          {elementKey === 'city-wireframe' && (
+            <div className="absolute inset-x-0 bottom-0 flex items-end justify-center gap-3 h-28 opacity-40">
+              <div className="w-6 h-20 border border-cyan-500/30 bg-cyan-500/5 rounded-t-sm" />
+              <div className="w-8 h-28 border border-purple-500/30 bg-purple-500/5 rounded-t-sm" />
+              <div className="w-7 h-14 border border-blue-500/30 bg-blue-500/5 rounded-t-sm" />
+            </div>
+          )}
+          {elementKey === 'minimal-blocks' && (
+            <div className="absolute inset-0 flex gap-4 items-center justify-center opacity-20">
+              <div className="w-6 h-6 border border-white/20 rounded rotate-12 animate-bounce" />
+              <div className="w-4 h-4 border border-white/20 rounded -rotate-12 animate-bounce delay-300" />
+            </div>
+          )}
+          {elementKey === 'crystal-shards' && (
+            <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/5 via-transparent to-blue-500/5 [transform:skewY(-12deg)_scale(1.2)]" />
+          )}
+          {elementKey === 'stars-orbit' && (
+            <div className="absolute inset-0 bg-[radial-gradient(2px_2px_at_20px_30px,#fff,transparent),radial-gradient(2px_2px_at_60px_120px,#fff,transparent),radial-gradient(2.5px_2.5px_at_110px_60px,#fff,transparent)] opacity-40 animate-pulse" />
+          )}
+          {elementKey === 'neural-mesh' && (
+            <div className="absolute inset-0 flex items-center justify-center gap-5 opacity-40">
+              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+              <div className="w-2 h-2 rounded-full bg-purple-400 animate-ping delay-300" />
+            </div>
+          )}
+          {elementKey === 'dna-helix' && (
+            <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-8 border-r border-l border-dashed border-emerald-500/20 animate-pulse" />
+          )}
+          {elementKey === 'tactical-grid' && (
+            <div className="absolute inset-0 bg-radial-grid bg-[size:20px_20px] border-b border-red-500/10"><div className="w-full h-0.5 bg-red-500/20 absolute top-1/2 animate-bounce" /></div>
+          )}
+          {elementKey === 'refractive-shapes' && (
+            <div className="absolute inset-0 flex items-center justify-center opacity-25 animate-spin [animation-duration:25s]"><div className="w-20 h-20 border-2 border-indigo-500/30 rotate-45" /></div>
+          )}
+          {elementKey === 'physics-cloud' && (
+            <div className="absolute inset-0 bg-radial-gradient bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.1)_0%,transparent_60%)] scale-150 animate-pulse" />
+          )}
+        </div>
+      );
+    };
 
     return (
       <div className="flex flex-col h-full space-y-6 overflow-y-auto custom-scrollbar pr-2">
@@ -1114,14 +1220,25 @@ export default function Dashboard() {
           <p className="text-sm text-gray-400">Control the global structure, aesthetics, and 3D physics of your page.</p>
         </div>
 
-        <div className={`w-full shrink-0 h-32 rounded-2xl relative overflow-hidden flex items-center justify-between p-8 border border-white/10 shadow-lg group`}>
+        {/* Top Active Theme Identity Banner */}
+        <div className="w-full shrink-0 h-32 rounded-2xl relative overflow-hidden flex items-center justify-between p-8 border border-white/10 shadow-lg group">
           <div className={`absolute inset-0 bg-gradient-to-br ${themeDetails.bg} opacity-80 transition-transform duration-700 group-hover:scale-105`}></div>
           <div className="relative z-10">
-            <span className="px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-widest border border-white/10 mb-2 inline-block shadow-lg">Active Theme</span>
+            <span className="px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-widest border border-white/10 mb-2 inline-block shadow-lg">Active System Setup</span>
             <h2 className="text-3xl font-black text-white">{themeDetails.name}</h2>
-            <p className="text-sm text-gray-300">{themeDetails.style}</p>
+            <p className="text-sm text-gray-300 font-mono tracking-tight">{themeDetails.style}</p>
           </div>
-          <button onClick={() => setIsThemeModalOpen(true)} className="relative z-10 px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-xl font-bold transition-all border border-white/20 flex items-center gap-2 shadow-[0_5px_15px_rgba(0,0,0,0.3)] hover:-translate-y-1">
+          <button
+            onClick={() => {
+              const projectCat = pageData.setup?.category === 'ecommerce' ? 'E-Commerce' :
+                pageData.setup?.category === 'gadgets' ? 'Digital Gadgets' :
+                  pageData.setup?.category === 'service' ? 'Agency' :
+                    pageData.setup?.category === 'learning' ? 'Learning' : 'All';
+              setModalCategory(projectCat);
+              setIsThemeModalOpen(true);
+            }}
+            className="relative z-10 px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-xl font-bold transition-all border border-white/20 flex items-center gap-2 shadow-[0_5px_15px_rgba(0,0,0,0.3)] hover:-translate-y-1"
+          >
             <Layout size={16} /> Change Theme
           </button>
         </div>
@@ -1133,7 +1250,7 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Navigation Style</label>
-                  <select value={pageData.theme.navStyle || 'standard'} onChange={(e) => updateNestedData('theme', 'navStyle', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white outline-none cursor-pointer">
+                  <select value={pageData.theme?.navStyle || 'standard'} onChange={(e) => updateNestedData('theme', 'navStyle', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white outline-none cursor-pointer focus:border-cyan-500">
                     <option value="floating">Floating Dock</option>
                     <option value="sticky">Sticky Top Bar</option>
                     <option value="standard">Standard Inline</option>
@@ -1142,7 +1259,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Content Width</label>
-                  <select value={pageData.theme.contentWidth || 'boxed'} onChange={(e) => updateNestedData('theme', 'contentWidth', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white outline-none cursor-pointer">
+                  <select value={pageData.theme?.contentWidth || 'boxed'} onChange={(e) => updateNestedData('theme', 'contentWidth', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white outline-none cursor-pointer focus:border-cyan-500">
                     <option value="fluid">Fluid (100% Edge-to-Edge)</option>
                     <option value="boxed">Boxed (Standard Container)</option>
                     <option value="narrow">Narrow (Minimal/Blog)</option>
@@ -1152,31 +1269,31 @@ export default function Dashboard() {
             </div>
 
             <div className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-6">
-              <h4 className="text-sm font-bold text-white border-b border-white/10 pb-2 flex items-center gap-2"><Sparkles size={16} className="text-cyan-400" /> Animation & Physics</h4>
+              <h4 className="text-sm font-bold text-white border-b border-white/10 pb-2 flex items-center gap-2"><Sparkles size={16} className="text-cyan-400" /> Animation & Physics Engine</h4>
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-4 flex justify-between">
-                  Animation Intensity <span>{pageData.theme.animationIntensity}%</span>
+                  Animation Intensity <span>{pageData.theme?.animationIntensity || 50}%</span>
                 </label>
-                <input type="range" min="0" max="100" value={pageData.theme.animationIntensity} onChange={(e) => updateNestedData('theme', 'animationIntensity', e.target.value)} className="w-full accent-cyan-500 cursor-pointer" />
+                <input type="range" min="0" max="100" value={pageData.theme?.animationIntensity || 50} onChange={(e) => updateNestedData('theme', 'animationIntensity', parseInt(e.target.value))} className="w-full accent-cyan-500 cursor-pointer" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { id: 'particles', label: 'Particle Engine', desc: 'Background 3D dust' },
-                  { id: 'floating', label: 'Floating Physics', desc: 'Hovering elements' },
-                  { id: 'mouseEffects', label: 'Mouse Tracking', desc: 'Parallax movement' },
-                  { id: 'scrollEffects', label: 'Scroll Reveal', desc: 'Fade in on scroll' }
+                  { id: 'particles', label: 'Particle Engine', desc: 'Background 3D dust clouds' },
+                  { id: 'floating', label: 'Floating Physics', desc: 'Hovering scene objects' },
+                  { id: 'mouseEffects', label: 'Mouse Tracking', desc: 'Parallax camera physics' },
+                  { id: 'scrollEffects', label: 'Scroll Reveal', desc: 'Fade structural wrappers' }
                 ].map(toggle => (
                   <div key={toggle.id} className="flex items-center justify-between p-3 bg-black/50 border border-white/10 rounded-xl">
                     <div>
                       <h4 className="text-sm font-bold text-white">{toggle.label}</h4>
-                      <p className="text-[10px] text-gray-500">{toggle.desc}</p>
+                      <p className="text-[10px] text-gray-500 font-sans">{toggle.desc}</p>
                     </div>
                     <div
-                      onClick={() => updateNestedData('theme', toggle.id, !pageData.theme[toggle.id])}
-                      className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${pageData.theme[toggle.id] ? 'bg-cyan-500' : 'bg-gray-700'}`}
+                      onClick={() => updateNestedData('theme', toggle.id, !pageData.theme?.[toggle.id])}
+                      className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${pageData.theme?.[toggle.id] ? 'bg-cyan-500' : 'bg-gray-700'}`}
                     >
-                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${pageData.theme[toggle.id] ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform duration-200 ${pageData.theme?.[toggle.id] ? 'translate-x-5' : 'translate-x-0'}`}></div>
                     </div>
                   </div>
                 ))}
@@ -1184,41 +1301,50 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-[#050505] border border-white/5 rounded-3xl p-8 relative flex flex-col items-center justify-center overflow-hidden shadow-inner group min-h-[400px]">
-            {pageData.theme.particles && (
-              <div className="absolute inset-0 z-0">
-                <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-cyan-500 rounded-full animate-ping opacity-50"></div>
-                <div className="absolute top-3/4 left-1/2 w-1 h-1 bg-cyan-500 rounded-full animate-ping opacity-50 delay-700"></div>
-                <div className="absolute top-1/2 left-3/4 w-3 h-3 bg-purple-500 rounded-full animate-ping opacity-50 delay-1000"></div>
+          {/* 🚀 THE LIVE DEVICE MOCKUP SCREEN WITH BUILT-IN ACTIVE BACKGROUNDS */}
+          <div className="bg-[#050507] border border-white/5 rounded-3xl p-8 relative flex flex-col items-center justify-center overflow-hidden shadow-inner min-h-[400px] group">
+
+            {/* Live Gradient Layer */}
+            <div className={`absolute inset-0 bg-gradient-to-br ${themeDetails.bg} opacity-20 transition-all duration-700`} />
+
+            {/* Live 3D Particle/Grid Simulation Layer */}
+            {renderLivePreviewBackground(themeDetails.element)}
+
+            {pageData.theme?.particles && (
+              <div className="absolute inset-0 z-0 pointer-events-none">
+                <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-cyan-500 rounded-full animate-ping opacity-40"></div>
+                <div className="absolute top-3/4 left-1/2 w-1 h-1 bg-cyan-400 rounded-full animate-ping opacity-30 delay-700"></div>
+                <div className="absolute top-1/2 left-3/4 w-2 h-2 bg-purple-500 rounded-full animate-ping opacity-40 delay-1000"></div>
               </div>
             )}
 
-            <div className={`relative z-10 w-full h-full border-2 border-dashed flex flex-col overflow-hidden transition-all duration-1000
-                      ${pageData.theme.animationIntensity > 50 ? 'border-cyan-400 bg-cyan-500/10 shadow-[0_0_30px_rgba(6,182,212,0.3)]' : 'border-white/20 bg-white/5'}
-                      ${pageData.theme.contentWidth === 'fluid' ? 'max-w-full rounded-none' : pageData.theme.contentWidth === 'narrow' ? 'max-w-[150px] rounded-3xl' : 'max-w-[250px] rounded-2xl'}
+            {/* Simulated Frame Shell Container */}
+            <div className={`relative z-10 w-full h-full border-2 border-dashed flex flex-col overflow-hidden transition-all duration-700
+                      ${(pageData.theme?.animationIntensity || 50) > 50 ? 'border-cyan-400 bg-cyan-500/5 shadow-[0_0_40px_rgba(6,182,212,0.15)]' : 'border-white/10 bg-white/[0.02]'}
+                      ${pageData.theme?.contentWidth === 'fluid' ? 'max-w-full rounded-none' : pageData.theme?.contentWidth === 'narrow' ? 'max-w-[180px] rounded-3xl' : 'max-w-[260px] rounded-2xl'}
                    `}>
-              {pageData.theme.navStyle !== 'hidden' && (
-                <div className={`h-8 border-b border-white/20 flex items-center px-4 gap-2 
-                             ${pageData.theme.navStyle === 'floating' ? 'm-4 rounded-full bg-white/10 backdrop-blur-md' : 'bg-white/5'}
+              {pageData.theme?.navStyle !== 'hidden' && (
+                <div className={`h-8 border-b border-white/10 flex items-center px-4 gap-2 
+                             ${pageData.theme?.navStyle === 'floating' ? 'm-3 rounded-full bg-white/5 border border-white/10 backdrop-blur-md' : 'bg-white/[0.02]'}
                           `}>
-                  <div className="w-3 h-3 rounded-full bg-cyan-500/50"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-cyan-500/60"></div>
                   <div className="flex-1"></div>
-                  <div className="w-8 h-1.5 rounded bg-white/20"></div>
+                  <div className="w-10 h-1.5 rounded bg-white/20"></div>
                 </div>
               )}
-              <div className={`flex-1 flex items-center justify-center p-8 transition-all
-                         ${pageData.theme.floating ? 'animate-[bounce_3s_infinite_ease-in-out]' : ''}
-                         ${pageData.theme.mouseEffects ? 'group-hover:rotate-6 group-hover:scale-105' : ''}
+              <div className={`flex-1 flex items-center justify-center p-8 transition-all duration-500
+                         ${pageData.theme?.floating ? 'animate-[bounce_4s_infinite_ease-in-out]' : ''}
+                         ${pageData.theme?.mouseEffects ? 'group-hover:rotate-3 group-hover:scale-105' : ''}
                       `}>
-                <LayoutTemplate size={48} className={`text-white transition-all ${pageData.theme.animationIntensity > 50 ? 'animate-pulse' : 'opacity-50'}`} />
+                <LayoutTemplate size={44} className={`text-white transition-all duration-500 ${(pageData.theme?.animationIntensity || 50) > 50 ? 'text-cyan-400 animate-pulse' : 'opacity-40'}`} />
               </div>
             </div>
           </div>
+
         </div>
       </div>
     );
   };
-
   const renderStep6AI = () => (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 h-full">
       <div className="space-y-6">
@@ -1445,49 +1571,148 @@ export default function Dashboard() {
   const renderThemeModal = () => {
     if (!isThemeModalOpen) return null;
 
+    const ALL_THEMES = [
+      { id: 'theme-1', name: 'Cyber Neon Mall', category: 'E-Commerce', style: 'Dark & Glowing', pro: false, bg: 'from-pink-600/30 to-purple-900/40', element: 'neon-grid', desc: 'Vibrant fluorescent geometries optimized for cutting-edge storefront showcases.' },
+      { id: 'theme-2', name: 'Space Market', category: 'E-Commerce', style: 'Galactic & Orbital', pro: false, bg: 'from-blue-600/30 to-slate-900', element: 'orbit-rings', desc: 'A deep space orbital platform system loop designed for high-end commerce catalogs.' },
+      { id: 'theme-3', name: 'Golden Prestige', category: 'E-Commerce', style: 'Luxury & Reflective', pro: true, bg: 'from-amber-600/20 to-stone-900', element: 'luxury-gems', desc: 'Premium raycast gold reflections and volumetric luxury rendering paths.' },
+      { id: 'theme-4', name: 'Cyber Lab', category: 'Digital Gadgets', style: 'Computational Field', pro: false, bg: 'from-cyan-600/30 to-zinc-900', element: 'matrix-nodes', desc: 'An immersive matrix data stream array custom-tailored for electronic spec structures.' },
+      { id: 'theme-5', name: 'Tron Grid', category: 'Digital Gadgets', style: 'Vector Landscape', pro: false, bg: 'from-teal-600/30 to-emerald-950/20', element: 'vector-lines', desc: 'Infinite reactive laser coordinates mapping hardware telemetry layers.' },
+      { id: 'theme-6', name: 'Portal Dimension', category: 'Digital Gadgets', style: 'Energy Vortex Core', pro: true, bg: 'from-purple-600/30 to-indigo-950', element: 'vortex-core', desc: 'Dynamic gravitational core pulling abstract geometry arrays into an active space vertex.' },
+      { id: 'theme-7', name: 'Skyline Estate', category: 'Real Estate', style: 'Holographic City', pro: false, bg: 'from-sky-600/30 to-slate-900', element: 'city-wireframe', desc: 'Wireframe urban developments scaling through light coordinates for development showcases.' },
+      { id: 'theme-8', name: 'Dream Hall', category: 'Real Estate', style: 'Minimalist Floating', pro: false, bg: 'from-violet-600/20 to-neutral-900', element: 'minimal-blocks', desc: 'Serene white architectural physics blocks hovering in clean responsive containers.' },
+      { id: 'theme-9', name: 'Frozen Platinum', category: 'Real Estate', style: 'Crystalline Glacial', pro: true, bg: 'from-blue-400/20 to-indigo-950', element: 'crystal-shards', desc: 'Refractive glacial materials interacting with ambient system lights for luxury agencies.' },
+      { id: 'theme-10', name: 'Cosmic Library', category: 'Learning', style: 'Swirling Information', pro: false, bg: 'from-fuchsia-600/30 to-purple-950', element: 'stars-orbit', desc: 'Stellar educational nebulae tracking information streams along user coordinate curves.' },
+      { id: 'theme-11', name: 'Ai Sphere', category: 'Learning', style: 'Neural Node Networks', pro: false, bg: 'from-cyan-500/20 to-slate-900', element: 'neural-mesh', desc: 'Interconnected glowing synaptic lanes mapping live AI computation grids.' },
+      { id: 'theme-12', name: 'Genetic Matrix', category: 'Learning', style: 'Biological Helix', pro: true, bg: 'from-emerald-500/20 to-stone-900', element: 'dna-helix', desc: 'Double-helix particle structures utilizing high-performance rendering configurations.' },
+      { id: 'theme-13', name: 'Command Center', category: 'Agency', style: 'Tactical Mainframe', pro: false, bg: 'from-red-600/20 to-zinc-900', element: 'tactical-grid', desc: 'Sleek, diagnostic agency environment tracking server frames and deployment statuses.' },
+      { id: 'theme-14', name: 'Crystal Vault', category: 'Agency', style: 'Refractive Geometric', pro: false, bg: 'from-indigo-500/20 to-slate-900', element: 'refractive-shapes', desc: 'Polygonal crystal monolith layouts responding cleanly to global cursor coordinates.' },
+      { id: 'theme-15', name: 'Dark Matter', category: 'Agency', style: 'Volumetric Physics', pro: true, bg: 'from-purple-900/40 to-neutral-950', element: 'physics-cloud', desc: 'High-end dark layout matrix computing fluid particle fields for creative portfolios.' }
+    ];
+
+    const THEME_CATEGORIES = ['All', 'E-Commerce', 'Digital Gadgets', 'Real Estate', 'Learning', 'Agency'];
+    const activeSelectedTheme = ALL_THEMES.find(t => t.id === pageData.setup?.themeId) || ALL_THEMES[0];
+
     const handleThemeSelect = (themeId) => {
-      let presets = {};
-      if (themeId === 'theme-1') presets = { animationIntensity: 80, particles: true, floating: true, navStyle: 'floating', contentWidth: 'fluid' };
-      else if (themeId === 'theme-2') presets = { animationIntensity: 30, particles: false, floating: false, navStyle: 'sticky', contentWidth: 'boxed' };
-      else if (themeId === 'theme-3') presets = { animationIntensity: 100, particles: true, floating: true, navStyle: 'hidden', contentWidth: 'fluid' };
-      else if (themeId === 'theme-4') presets = { animationIntensity: 40, particles: false, floating: true, navStyle: 'standard', contentWidth: 'boxed' };
+      let presets = { animationIntensity: 60, particles: true, floating: true, navStyle: 'standard', contentWidth: 'boxed' };
+
+      if (['theme-1', 'theme-3', 'theme-6', 'theme-12'].includes(themeId)) {
+        presets = { animationIntensity: 85, particles: true, floating: true, navStyle: 'floating', contentWidth: 'fluid' };
+      } else if (['theme-2', 'theme-5', 'theme-7', 'theme-13'].includes(themeId)) {
+        presets = { animationIntensity: 40, particles: true, floating: false, navStyle: 'sticky', contentWidth: 'boxed' };
+      }
 
       setPageData(prev => ({ ...prev, setup: { ...prev.setup, themeId }, theme: { ...prev.theme, ...presets } }));
-      setIsThemeModalOpen(false);
+      setIsThemeModalOpen(false); // 🚀 Instantly unmounts and closes upon selection click
+    };
+
+    // Shared inner layout rendering block for card animations
+    const renderModalPreviewBackground = (elementKey) => {
+      return (
+        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden opacity-40">
+          {elementKey === 'neon-grid' && <div className="absolute inset-0 bg-[linear-gradient(to_right,#ff003c15_1px,transparent_1px),linear-gradient(to_bottom,#00ffff15_1px,transparent_1px)] bg-[size:12px_12px] animate-pulse" />}
+          {elementKey === 'orbit-rings' && <div className="w-16 h-16 rounded-full border border-blue-400/20 border-dashed animate-spin [animation-duration:8s] mx-auto mt-8" />}
+          {elementKey === 'vector-lines' && <div className="absolute inset-x-0 bottom-0 h-12 bg-[linear-gradient(to_bottom,transparent,#00ffff20)] [transform:perspective(40deg)_rotateX(60deg)] border-t border-cyan-500/30" />}
+          {elementKey === 'vortex-core' && <div className="w-12 h-12 rounded-full border border-purple-500/30 animate-ping mx-auto mt-10" />}
+          {elementKey === 'neural-mesh' && <div className="flex gap-2 justify-center mt-12 opacity-60"><div className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce" /><div className="w-2 h-2 rounded-full bg-purple-400 animate-bounce [animation-delay:0.2s]" /></div>}
+          {elementKey === 'city-wireframe' && <div className="flex items-end gap-1 justify-center h-12 absolute bottom-0 inset-x-0"><div className="w-3 h-8 border border-cyan-500/20" /><div className="w-4 h-12 border border-purple-500/20" /></div>}
+        </div>
+      );
     };
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-        <div className="bg-[#0A0A0E] border border-white/10 w-full max-w-4xl h-[80vh] rounded-3xl flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-          <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/50">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2"><LayoutTemplate size={20} /> Theme Gallery</h2>
-            <button onClick={() => setIsThemeModalOpen(false)} className="text-gray-400 hover:text-white">Close [X]</button>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-3 md:p-6 animate-in fade-in duration-200">
+        <div className="bg-[#0A0A0E] border border-white/10 w-full max-w-6xl h-[90vh] md:h-[88vh] rounded-2xl md:rounded-3xl flex flex-col shadow-2xl overflow-hidden transform will-change-transform">
+
+          {/* Header */}
+          <div className="p-4 md:p-6 border-b border-white/10 flex justify-between items-center bg-black/40 shrink-0">
+            <div>
+              <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2"><LayoutTemplate size={20} className="text-cyan-400" /> Theme Gallery Workspace</h2>
+              <p className="hidden sm:block text-xs text-gray-500 mt-1">Cross-examine layout meshes across alternative market structures globally.</p>
+            </div>
+            <button onClick={() => setIsThemeModalOpen(false)} className="text-gray-400 hover:text-white px-4 py-2 border border-white/10 rounded-xl bg-white/5 text-xs font-mono transition-colors">Close [X]</button>
           </div>
-          <div className="flex-1 p-6 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-6">
-            {[
-              { id: 'theme-1', name: 'Cyber Neon', style: 'Dark & Glowing', pro: false },
-              { id: 'theme-2', name: 'Glass Corporate', style: 'Clean & Blurred', pro: false },
-              { id: 'theme-3', name: 'Immersive VR', style: 'Full 3D Space', pro: true },
-              { id: 'theme-4', name: 'E-Comm Flow', style: 'High Conversion', pro: true }
-            ].map(theme => (
-              <div key={theme.id} onClick={() => handleThemeSelect(theme.id)} className={`rounded-2xl border-2 transition-all cursor-pointer overflow-hidden group relative ${pageData.setup.themeId === theme.id ? 'border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.3)]' : 'border-white/10 hover:border-white/30'}`}>
-                {theme.pro && <div className="absolute top-2 right-2 z-10 bg-gradient-to-r from-amber-500 to-orange-500 text-[10px] font-bold px-2 py-0.5 rounded text-white shadow-lg">PRO</div>}
-                <div className="h-40 bg-gray-900 relative flex items-center justify-center overflow-hidden">
-                  <div className={`absolute inset-0 bg-gradient-to-br ${theme.id === 'theme-1' ? 'from-pink-600/40 to-purple-900' : theme.id === 'theme-2' ? 'from-gray-700 to-black' : theme.id === 'theme-3' ? 'from-cyan-600/40 to-black' : 'from-emerald-600/40 to-black'} opacity-80 group-hover:scale-105 transition-transform duration-500`}></div>
-                  <Layout className="w-12 h-12 text-white/50 relative z-10" />
-                </div>
-                <div className="p-4 bg-black/80 backdrop-blur-md">
-                  <p className="text-sm font-bold text-white mb-1">{theme.name}</p>
-                  <p className="text-[10px] text-gray-500 uppercase">{theme.style}</p>
-                </div>
-              </div>
+
+          {/* Categories Tab Row */}
+          <div className="px-4 md:px-6 py-3 bg-black/40 border-b border-white/5 flex flex-wrap gap-2 items-center shrink-0">
+            <span className="text-[10px] font-mono uppercase text-gray-500 mr-2 hidden md:inline-block">Filter Niche Matrix:</span>
+            {THEME_CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setModalCategory(cat)}
+                className={`px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all duration-200 border ${modalCategory === cat
+                  ? 'bg-cyan-500/10 border-cyan-500 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                  : 'bg-transparent border-white/5 text-gray-400 hover:border-white/20 hover:text-white'
+                  }`}
+              >
+                {cat}
+              </button>
             ))}
           </div>
+
+          {/* Live Status Header Banner Box */}
+          <div className="mx-4 md:mx-6 mt-4 p-5 rounded-xl border border-white/5 relative overflow-hidden bg-black/50 backdrop-blur-md shrink-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className={`absolute inset-0 bg-gradient-to-r ${activeSelectedTheme.bg} opacity-15 transition-all duration-700 ease-in-out`} />
+            <div className="relative z-10 space-y-1 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-mono font-black uppercase tracking-widest text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 rounded">Current Target Core: {activeSelectedTheme.category}</span>
+                <span className="text-[9px] font-mono text-gray-500 bg-white/5 px-2 py-0.5 rounded border border-white/5">{activeSelectedTheme.id}</span>
+              </div>
+              <h3 className="text-lg md:text-xl font-black text-white tracking-tight">{activeSelectedTheme.name} <span className="text-xs font-normal font-mono text-gray-500 ml-1">[{activeSelectedTheme.style}]</span></h3>
+              <p className="text-xs text-gray-400 max-w-3xl font-light leading-relaxed">{activeSelectedTheme.desc}</p>
+            </div>
+            {activeSelectedTheme.pro && <span className="relative z-10 shrink-0 bg-gradient-to-r from-amber-500 to-orange-600 text-black text-[10px] font-black px-3 py-1.5 rounded-md uppercase tracking-wider shadow-xl">PRO ACTIVE MESH</span>}
+          </div>
+
+          {/* Cards Gallery Grid (Alive Cards) */}
+          <div className="flex-1 p-4 md:p-6 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 bg-[#060608] custom-scrollbar">
+            {ALL_THEMES
+              .filter(t => modalCategory === 'All' || t.category === modalCategory)
+              .map(theme => {
+                const isSelected = pageData.setup?.themeId === theme.id;
+
+                return (
+                  <div
+                    key={theme.id}
+                    onClick={() => handleThemeSelect(theme.id)}
+                    className={`rounded-xl md:rounded-2xl border-2 transition-all duration-300 cursor-pointer overflow-hidden group relative flex flex-col justify-between min-h-[140px] transform-gpu ${isSelected ? 'border-cyan-500 bg-cyan-500/5 shadow-[0_0_30px_rgba(6,182,212,0.2)]' : 'border-white/10 bg-black/40 hover:border-white/20 hover:bg-[#111115]'
+                      }`}
+                  >
+                    {theme.pro && <div className="absolute top-3 right-3 z-10 bg-gradient-to-r from-amber-500 to-orange-500 text-[9px] font-black px-2.5 py-0.5 rounded text-black tracking-wider uppercase shadow-lg">PRO</div>}
+
+                    <div className="h-28 md:h-32 bg-gray-900 relative flex items-center justify-center overflow-hidden border-b border-white/5">
+                      <div className={`absolute inset-0 bg-gradient-to-br ${theme.bg} opacity-80 group-hover:scale-105 transition-transform duration-500 will-change-transform`}></div>
+
+                      {/* 🚀 Injected Card Preview Vector Animation */}
+                      {renderModalPreviewBackground(theme.element)}
+
+                      <Layout className={`w-8 h-8 md:w-10 md:h-10 relative z-10 transition-colors ${isSelected ? 'text-cyan-400' : 'text-white/20 group-hover:text-white/40'}`} />
+                      <span className="absolute bottom-2 left-3 text-[9px] font-mono text-gray-500 bg-black/60 px-1.5 py-0.5 rounded border border-white/5">{theme.id}</span>
+                    </div>
+
+                    <div className="p-4 bg-black/20 flex-1 flex flex-col justify-between">
+                      <div>
+                        <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-cyan-500/60 block mb-0.5">{theme.category}</span>
+                        <h4 className="text-sm md:text-base font-bold text-white group-hover:text-cyan-400 transition-colors">{theme.name}</h4>
+                        <p className="text-[11px] md:text-xs text-gray-400 mt-1 line-clamp-2 font-light">{theme.style} environment loop profiles.</p>
+                      </div>
+
+                      {isSelected && (
+                        <div className="mt-3 flex items-center gap-1.5 text-xs text-cyan-400 font-bold bg-cyan-500/10 border border-cyan-500/20 py-1.5 px-3 rounded-lg w-full justify-center">
+                          <CheckCircle2 size={12} /> Currently Selected Active Target
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                );
+              })}
+          </div>
+
         </div>
       </div>
     );
-  }
-
+  };
   const renderPageTypeModal = () => {
     if (!isPageTypeModalOpen) return null;
     return (
@@ -1585,14 +1810,15 @@ export default function Dashboard() {
             </button>
           </div>
         </main>
-        {renderThemeModal()}
-        {renderPageTypeModal()}
+
       </div>
     )
   };
 
   return (
     <div className="min-h-screen bg-[#050505] text-gray-100 flex font-sans selection:bg-cyan-500/30 overflow-hidden">
+
+      {/* GLOBAL SYSTEM LEFT SIDEBAR */}
       <aside className="w-16 lg:w-64 bg-[#0A0A0E] border-r border-white/5 flex flex-col relative z-30 transition-all duration-300 shadow-[10px_0_30px_rgba(0,0,0,0.3)]">
 
         <div className="p-4 border-b border-white/5 hidden lg:block shrink-0">
@@ -1621,6 +1847,17 @@ export default function Dashboard() {
           ))}
         </nav>
 
+        <div className="px-3 py-2 border-t border-white/5 shrink-0">
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl text-sm font-medium text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-all group"
+            title="Sign Out"
+          >
+            <LogOut size={20} className="opacity-70 group-hover:scale-105 transition-transform" />
+            <span className="hidden lg:block font-bold">Sign Out</span>
+          </button>
+        </div>
+
         <div className="p-4 mt-auto border-t border-white/5 hidden lg:block shrink-0">
           {userTier === 'free' ? (
             <div onClick={handleBuyPro} className="bg-gradient-to-r from-gray-800 to-gray-900 border border-gray-700 rounded-2xl p-3 cursor-pointer hover:border-cyan-500 transition-colors group">
@@ -1643,6 +1880,7 @@ export default function Dashboard() {
         </div>
       </aside>
 
+      {/* WORKSPACE APP WORKSPACE DISPLAY LAYOUTS */}
       <main className="flex-1 flex flex-col relative z-10 h-screen overflow-hidden">
         <header className="h-20 bg-[#0A0A0E] border-b border-white/5 flex items-center justify-between px-8 z-40 shadow-sm shrink-0">
           <div className="flex items-center gap-4">
@@ -1703,8 +1941,12 @@ export default function Dashboard() {
         {activeTab === 'pages' && renderPages()}
         {activeTab === 'inventory' && renderInventory()}
         {activeTab === 'settings' && renderSettings()}
-        {renderPageTypeModal()}
       </main>
+
+      {/* 🚀 MOVED TO ROOT LEVEL: Overlays all components seamlessly across all devices */}
+      {renderThemeModal()}
+      {renderPageTypeModal()}
+
     </div>
   );
 }

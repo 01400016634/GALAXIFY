@@ -14,16 +14,26 @@ const OwnerCMS = () => {
   const [loading, setLoading] = useState(true);
   const [showThemeModal, setShowThemeModal] = useState(false);
 
-  // 🚀 NEW: THEME CATEGORIES STATE
-  const [categories, setCategories] = useState([
-    'E-Commerce',
-    'Digital Gadgets',
-    'Learning Platform',
-    'Real Estate',
-    'Agency/Service',
-    'Personal Portfolio'
-  ]);
+  // 🚀 Place this updated master list at the top of OwnerCMS.jsx
+  const MASTER_THEMES = [
+    { id: 'theme-1', name: 'Cyber Neon Mall', category: 'E-Commerce', premium: false, videoBg: true, previewClass: 'bg-gradient-to-br from-pink-600/30 via-purple-950 to-black', element: 'neon-grid' },
+    { id: 'theme-2', name: 'Space Market', category: 'E-Commerce', premium: false, videoBg: true, previewClass: 'bg-gradient-to-br from-blue-900/40 via-slate-950 to-black', element: 'orbit-rings' },
+    { id: 'theme-3', name: 'Golden Prestige', category: 'E-Commerce', premium: true, videoBg: true, previewClass: 'bg-gradient-to-br from-amber-600/20 via-stone-950 to-black', element: 'luxury-gems' },
+    { id: 'theme-4', name: 'Cyber Lab', category: 'Digital Gadgets', premium: false, videoBg: true, previewClass: 'bg-gradient-to-br from-cyan-600/30 via-zinc-950 to-black', element: 'matrix-nodes' },
+    { id: 'theme-5', name: 'Tron Grid', category: 'Digital Gadgets', premium: false, videoBg: true, previewClass: 'bg-gradient-to-br from-teal-600/30 via-emerald-950/40 to-black', element: 'vector-lines' },
+    { id: 'theme-6', name: 'Portal Dimension', category: 'Digital Gadgets', premium: true, videoBg: true, previewClass: 'bg-gradient-to-br from-purple-900/40 via-indigo-950 to-black', element: 'vortex-core' },
+    { id: 'theme-7', name: 'Skyline Estate', category: 'Real Estate', premium: false, videoBg: true, previewClass: 'bg-gradient-to-br from-sky-900/30 via-slate-950 to-black', element: 'city-wireframe' },
+    { id: 'theme-8', name: 'Dream Hall', category: 'Real Estate', premium: false, videoBg: true, previewClass: 'bg-gradient-to-br from-violet-900/20 via-neutral-950 to-black', element: 'minimal-blocks' },
+    { id: 'theme-9', name: 'Frozen Platinum', category: 'Real Estate', premium: true, videoBg: true, previewClass: 'bg-gradient-to-br from-blue-500/20 via-slate-950 to-black', element: 'crystal-shards' },
+    { id: 'theme-10', name: 'Cosmic Library', category: 'Learning', premium: false, videoBg: true, previewClass: 'bg-gradient-to-br from-fuchsia-900/30 via-purple-950 to-black', element: 'stars-orbit' },
+    { id: 'theme-11', name: 'Ai Sphere', category: 'Learning', premium: false, videoBg: true, previewClass: 'bg-gradient-to-br from-cyan-500/20 via-slate-950 to-black', element: 'neural-mesh' },
+    { id: 'theme-12', name: 'Genetic Matrix', category: 'Learning', premium: true, videoBg: true, previewClass: 'bg-gradient-to-br from-emerald-500/20 via-stone-950 to-black', element: 'dna-helix' },
+    { id: 'theme-13', name: 'Command Center', category: 'Agency', premium: false, videoBg: true, previewClass: 'bg-gradient-to-br from-red-950/40 via-zinc-950 to-black', element: 'tactical-grid' },
+    { id: 'theme-14', name: 'Crystal Vault', category: 'Agency', premium: false, videoBg: true, previewClass: 'bg-gradient-to-br from-indigo-500/20 via-slate-950 to-black', element: 'refractive-shapes' },
+    { id: 'theme-15', name: 'Dark Matter', category: 'Agency', premium: true, videoBg: true, previewClass: 'bg-gradient-to-br from-purple-950 via-neutral-950 to-black', element: 'physics-cloud' }
+  ];
 
+  const CUSTOM_CATEGORIES = ['E-Commerce', 'Digital Gadgets', 'Real Estate', 'Learning', 'Agency'];
   const handleAddNewCategory = () => {
     const newCat = prompt("Enter a new Theme Category:");
     if (newCat && newCat.trim() !== "") {
@@ -557,7 +567,9 @@ const OwnerCMS = () => {
 
             {/* 🎨 THEME ENGINE MODULE */}
             {activeTab === 'themes' && (
-              <motion.div key="themes" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
+              <motion.div key="themes" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-10">
+
+                {/* Header Management Bar */}
                 <div className="flex justify-between items-center bg-black/40 border border-white/10 p-6 rounded-2xl backdrop-blur-xl">
                   <div>
                     <h3 className="text-white font-bold text-xl">Theme Database</h3>
@@ -568,38 +580,22 @@ const OwnerCMS = () => {
                   </button>
                 </div>
 
+                {/* Upload Modal */}
                 {showThemeModal && (
                   <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
                     <div className="bg-[#0a0a0a] border border-[#ff003c]/30 rounded-2xl p-6 w-full max-w-md">
                       <h3 className="text-white font-bold text-xl mb-4">Upload/Edit Theme</h3>
-
                       <form onSubmit={handleThemeUpload} className="space-y-4">
-
                         <input type="text" name="name" placeholder="Theme Name (e.g., The Tech-Nexus)" className="w-full bg-white/5 border border-white/10 rounded p-3 text-white focus:border-[#ff003c]" required />
 
-                        {/* 🚀 THE NEW DYNAMIC CATEGORY DROPDOWN */}
                         <div className="flex gap-2">
-                          <select
-                            name="category"
-                            className="flex-1 bg-white/5 border border-white/10 rounded p-3 text-white focus:border-[#ff003c] outline-none cursor-pointer"
-                            required
-                            defaultValue=""
-                          >
+                          <select name="category" className="flex-1 bg-white/5 border border-white/10 rounded p-3 text-white focus:border-[#ff003c] outline-none cursor-pointer" required defaultValue="">
                             <option value="" disabled>Select a Category...</option>
                             {categories.map((cat, i) => (
-                              <option key={i} value={cat} className="bg-slate-900 text-white">
-                                {cat}
-                              </option>
+                              <option key={i} value={cat} className="bg-slate-900 text-white">{cat}</option>
                             ))}
                           </select>
-
-                          <button
-                            type="button"
-                            onClick={handleAddNewCategory}
-                            className="px-4 bg-[#ff003c]/10 hover:bg-[#ff003c]/20 text-[#ff003c] rounded-lg text-sm font-bold border border-[#ff003c]/30 transition-colors whitespace-nowrap"
-                          >
-                            + Add New
-                          </button>
+                          <button type="button" onClick={handleAddNewCategory} className="px-4 bg-[#ff003c]/10 hover:bg-[#ff003c]/20 text-[#ff003c] rounded-lg text-sm font-bold border border-[#ff003c]/30 transition-colors whitespace-nowrap">+ Add New</button>
                         </div>
 
                         <div className="bg-white/5 border border-white/10 rounded p-3">
@@ -615,30 +611,120 @@ const OwnerCMS = () => {
                           <button type="submit" className="px-4 py-2 bg-[#ff003c] text-white font-bold rounded shadow-[0_0_15px_rgba(255,0,60,0.4)]">Upload Theme</button>
                         </div>
                       </form>
-
                     </div>
                   </div>
                 )}
 
-                <div className="grid grid-cols-3 gap-6">
-                  <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden group">
-                    <div className="h-40 bg-gradient-to-br from-slate-800 to-black relative flex items-center justify-center">
-                      <Palette size={48} className="text-white/20 group-hover:scale-110 transition-transform" />
-                      <span className="absolute top-3 right-3 bg-[#ff003c]/20 text-[#ff003c] border border-[#ff003c]/50 text-[10px] font-bold px-2 py-1 rounded">PREMIUM</span>
-                      <span className="absolute top-3 left-3 bg-blue-500/20 text-blue-400 border border-blue-500/50 text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1"><Video size={10} /> VIDEO BG</span>
-                    </div>
-                    <div className="p-5">
-                      <h4 className="text-white font-bold text-lg mb-1">Cyber Neon</h4>
-                      <div className="flex gap-2 mt-4">
-                        <button className="flex-1 bg-white/10 hover:bg-white/20 text-white py-2 rounded-lg text-xs font-bold transition-colors">Edit Metadata</button>
-                        <button className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors"><Trash2 size={16} /></button>
+                {/* 🚀 BANNERS & CATEGORY CLUSTERS LAYER */}
+                <div className="space-y-12">
+                  {CUSTOM_CATEGORIES.map((catName) => {
+                    const matchedThemes = MASTER_THEMES.filter(t => t.category === catName);
+
+                    return (
+                      <div key={catName} className="space-y-4">
+
+                        {/* Section Header Banner */}
+                        <div className="flex items-center gap-3 border-b border-white/5 pb-2">
+                          <span className="text-xs font-mono uppercase tracking-[0.2em] text-[#ff003c] font-black bg-[#ff003c]/10 border border-[#ff003c]/20 px-3 py-1 rounded">
+                            {catName}
+                          </span>
+                          <span className="text-xs font-mono text-slate-500">
+                            ({matchedThemes.length} Nodes Configured)
+                          </span>
+                          <div className="flex-1 h-[1px] bg-gradient-to-r from-white/10 to-transparent ml-2" />
+                        </div>
+
+                        {/* Themes Content Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {matchedThemes.map((theme) => (
+                            <div key={theme.id} className="bg-[#0b0b0d] border border-white/10 rounded-2xl overflow-hidden group flex flex-col justify-between shadow-xl">
+
+                              {/* 🔮 CINEMATIC LIVE PREVIEW CANVAS OVERLAY MOCKUP */}
+                              <div className={`h-40 ${theme.previewClass} relative flex items-center justify-center border-b border-white/5 overflow-hidden`}>
+
+                                {theme.element === 'neon-grid' && (
+                                  <div className="absolute inset-0 bg-[linear-gradient(to_right,#ff003c10_1px,transparent_1px),linear-gradient(to_bottom,#00ffff10_1px,transparent_1px)] bg-[size:14px_24px] rotate-12 scale-150" />
+                                )}
+                                {theme.element === 'orbit-rings' && (
+                                  <div className="w-20 h-20 rounded-full border border-blue-400/30 border-dashed animate-spin duration-10000 relative">
+                                    <div className="w-2 h-2 rounded-full bg-cyan-400 absolute top-2 left-2 shadow-[0_0_10px_#00ffff]" />
+                                  </div>
+                                )}
+                                {theme.element === 'vector-lines' && (
+                                  <div className="absolute inset-x-0 bottom-0 h-16 bg-[linear-gradient(to_bottom,transparent,#00ffff20)] [transform:perspective(50px)_rotateX(60deg)] border-t border-cyan-500/40" />
+                                )}
+                                {theme.element === 'vortex-core' && (
+                                  <div className="w-16 h-16 rounded-full bg-purple-500/10 border-2 border-purple-500/40 animate-pulse flex items-center justify-center">
+                                    <div className="w-8 h-8 rounded-full border border-cyan-400/60 animate-ping" />
+                                  </div>
+                                )}
+                                {theme.element === 'neural-mesh' && (
+                                  <div className="flex gap-4 opacity-40">
+                                    <div className="w-3 h-3 rounded-full bg-cyan-400 animate-bounce" />
+                                    <div className="w-3 h-3 rounded-full bg-purple-400 animate-bounce [animation-delay:0.2s]" />
+                                    <div className="w-3 h-3 rounded-full bg-blue-400 animate-bounce [animation-delay:0.4s]" />
+                                  </div>
+                                )}
+                                {theme.element === 'city-wireframe' && (
+                                  <div className="flex items-end gap-1.5 h-16 bottom-0 absolute opacity-30">
+                                    <div className="w-4 h-12 border border-cyan-500/40" />
+                                    <div className="w-6 h-16 border border-purple-500/40" />
+                                    <div className="w-5 h-8 border border-blue-500/40" />
+                                  </div>
+                                )}
+                                {!['neon-grid', 'orbit-rings', 'vector-lines', 'vortex-core', 'neural-mesh', 'city-wireframe'].includes(theme.element) && (
+                                  <div className="absolute inset-0 bg-white/[0.01] flex items-center justify-center">
+                                    <Palette size={36} className="text-white/5 group-hover:text-white/20 transition-colors" />
+                                  </div>
+                                )}
+
+                                <span className="absolute bottom-3 left-3 text-[10px] font-mono text-slate-400 bg-black/60 px-2 py-0.5 rounded border border-white/10">
+                                  {theme.id}
+                                </span>
+
+                                {theme.premium && (
+                                  <span className="absolute top-3 right-3 bg-[#ff003c]/20 text-[#ff003c] border border-[#ff003c]/50 text-[10px] font-bold px-2 py-1 rounded tracking-wide shadow-md">
+                                    PRO
+                                  </span>
+                                )}
+                                {theme.videoBg && (
+                                  <span className="absolute top-3 left-3 bg-blue-500/20 text-blue-400 border border-blue-500/50 text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1">
+                                    <Video size={10} /> 3D SPACE
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Info Content Area */}
+                              <div className="p-5 space-y-4">
+                                <div>
+                                  <h4 className="text-white font-bold text-lg leading-tight group-hover:text-[#ff003c] transition-colors">
+                                    {theme.name}
+                                  </h4>
+                                  <p className="text-[11px] font-mono text-slate-500 uppercase mt-0.5 tracking-wider">
+                                    Operational Live Environment
+                                  </p>
+                                </div>
+                                <div className="flex gap-2 pt-2 border-t border-white/5">
+                                  <button type="button" className="flex-1 bg-white/5 hover:bg-white/10 text-white py-2 rounded-lg text-xs font-bold transition-colors border border-white/5">
+                                    Edit Metadata
+                                  </button>
+                                  <button type="button" className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors">
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </div>
+
+                            </div>
+                          ))}
+                        </div>
+
                       </div>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
+
               </motion.div>
             )}
-
             {/* ⚙️ GLOBAL CONFIG MODULE */}
             {activeTab === 'settings' && (
               <motion.div key="settings" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="grid grid-cols-2 gap-8">
