@@ -5,7 +5,8 @@ import {
   CreditCard, Settings, ShieldAlert, LogOut,
   Activity, Search, MoreVertical, UploadCloud,
   Edit, Trash2, DollarSign, TrendingUp, Eye, Image as ImageIcon,
-  Globe, Layout, Video, Layers, PlusCircle, ListPlus, Type, Save
+  Globe, Layout, Video, Layers, PlusCircle, ListPlus, Type, Save, CheckCircle2,
+  X
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -14,7 +15,11 @@ const OwnerCMS = () => {
   const [loading, setLoading] = useState(true);
   const [showThemeModal, setShowThemeModal] = useState(false);
 
-  // 🚀 Place this updated master list at the top of OwnerCMS.jsx
+  // States for the Global Content Editor Modal
+  const [editingSection, setEditingSection] = useState(null);
+  const [tempContentData, setTempContentData] = useState([]);
+
+  // MASTER THEMES REGISTRY
   const MASTER_THEMES = [
     { id: 'theme-1', name: 'Cyber Neon Mall', category: 'E-Commerce', premium: false, videoBg: true, previewClass: 'bg-gradient-to-br from-pink-600/30 via-purple-950 to-black', element: 'neon-grid' },
     { id: 'theme-2', name: 'Space Market', category: 'E-Commerce', premium: false, videoBg: true, previewClass: 'bg-gradient-to-br from-blue-900/40 via-slate-950 to-black', element: 'orbit-rings' },
@@ -33,7 +38,8 @@ const OwnerCMS = () => {
     { id: 'theme-15', name: 'Dark Matter', category: 'Agency', premium: true, videoBg: true, previewClass: 'bg-gradient-to-br from-purple-950 via-neutral-950 to-black', element: 'physics-cloud' }
   ];
 
-  const CUSTOM_CATEGORIES = ['E-Commerce', 'Digital Gadgets', 'Real Estate', 'Learning', 'Agency'];
+  const [categories, setCategories] = useState(['E-Commerce', 'Digital Gadgets', 'Real Estate', 'Learning', 'Agency']);
+
   const handleAddNewCategory = () => {
     const newCat = prompt("Enter a new Theme Category:");
     if (newCat && newCat.trim() !== "") {
@@ -51,11 +57,20 @@ const OwnerCMS = () => {
     settings: {
       siteName: '3D UNIVERSE',
       heroTagline: 'Build immersive web experiences',
+      siteLogo: '',
       maintenanceMode: false,
       homepageSections: ['Features', 'Pricing', 'Themes', 'FAQ'],
-      userDashboardTabs: ['Analytics', 'Pages', 'Editor', 'Inventory', 'Settings']
+      userDashboardTabs: ['Analytics', 'Pages', 'Editor', 'Inventory', 'Settings'],
+      sectionContent: {
+        FAQ: [
+          { id: 1, k1: "Do I need 3D modeling experience?", k2: "No coding or design skills are needed. The engine auto-configures everything." },
+          { id: 2, k1: "Can I connect a custom domain?", k2: "Yes, Pro users can point landing pages to any custom domain." }
+        ],
+        Features: [
+          { id: 1, k1: "Instant Deployment", k2: "Push to edge network in milliseconds." }
+        ]
+      }
     },
-    // DYNAMIC WORKFLOW CONTROLLER FOR USER DASHBOARD
     workflowConfig: [
       {
         phase: 'Phase 1: Architecture',
@@ -88,10 +103,17 @@ const OwnerCMS = () => {
         ]
       }
     ],
-    revenueData: []
+    revenueData: [
+      { name: 'Mon', users: 120, sales: 15, revenue: 450 },
+      { name: 'Tue', users: 210, sales: 25, revenue: 750 },
+      { name: 'Wed', users: 180, sales: 20, revenue: 600 },
+      { name: 'Thu', users: 290, sales: 40, revenue: 1200 },
+      { name: 'Fri', users: 350, sales: 55, revenue: 1650 },
+      { name: 'Sat', users: 420, sales: 70, revenue: 2100 },
+      { name: 'Sun', users: 500, sales: 90, revenue: 2700 }
+    ]
   });
 
-  // 1. DATA FETCHING FUNCTION
   const fetchDashboard = async () => {
     try {
       const timestamp = new Date().getTime();
@@ -107,17 +129,16 @@ const OwnerCMS = () => {
 
       const result = await response.json();
 
-      const safeRevenue = result.revenueData || [
-        { name: 'Week 1', revenue: 0 }, { name: 'Week 2', revenue: 150 },
-        { name: 'Week 3', revenue: 450 }, { name: 'Week 4', revenue: 900 }
-      ];
+      const activeThemesCount = MASTER_THEMES.length;
+      const mostUsedTheme = result.metrics?.mostUsedTheme || 'Cyber Neon Mall';
 
       setData(prev => ({
         ...prev,
         ...result,
-        revenueData: safeRevenue,
-        settings: { ...prev.settings, ...result.settings },
-        workflowConfig: result.workflowConfig || prev.workflowConfig // Load from DB if exists
+        revenueData: result.revenueData?.length > 0 ? result.revenueData : prev.revenueData,
+        metrics: { ...result.metrics, mostUsedTheme, activeThemesCount },
+        settings: { ...prev.settings, ...(result.settings || {}) },
+        workflowConfig: result.workflowConfig || prev.workflowConfig
       }));
       setLoading(false);
     } catch (error) {
@@ -155,17 +176,9 @@ const OwnerCMS = () => {
     fetchDashboard();
   };
 
-  // --- NEW PROJECT HANDLERS ---
-  const handleCopyLink = (username) => {
-    if (!username) return alert("User hasn't set a username yet!");
-    const url = `${window.location.origin}/p/${username}`;
-    navigator.clipboard.writeText(url);
-    alert(`🔗 Link copied: ${url}`);
-  };
-
   const handleSetDomain = async (projectId, currentDomain) => {
     const newDomain = prompt("Enter custom domain (e.g., www.mywebsite.com):", currentDomain || "");
-    if (newDomain === null) return; // User clicked cancel
+    if (newDomain === null) return;
 
     try {
       await fetch(`http://localhost:5001/api/owner/projects/${projectId}/domain`, {
@@ -173,7 +186,7 @@ const OwnerCMS = () => {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` },
         body: JSON.stringify({ customDomain: newDomain })
       });
-      fetchDashboard(); // Refresh data
+      fetchDashboard();
     } catch (err) {
       alert("Failed to update domain");
     }
@@ -186,7 +199,7 @@ const OwnerCMS = () => {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
       });
-      fetchDashboard(); // Refresh data
+      fetchDashboard();
     } catch (err) {
       alert("Failed to delete project");
     }
@@ -194,15 +207,12 @@ const OwnerCMS = () => {
 
   const handleThemeUpload = async (e) => {
     e.preventDefault();
-
-    // 1. Get the file
     const fileInput = e.target.themeFile;
     const file = fileInput.files[0];
 
     if (!file) return alert("Please select a .jsx file to upload.");
     if (!file.name.endsWith('.jsx')) return alert("Only .jsx files are allowed.");
 
-    // 2. Pack everything (File + Text) into a FormData object
     const formData = new FormData();
     formData.append('themeFile', file);
     formData.append('name', e.target.name.value);
@@ -211,20 +221,16 @@ const OwnerCMS = () => {
     formData.append('supportsVideoBg', e.target.supportsVideoBg.checked);
 
     try {
-      // 3. Send it to the server
       const response = await fetch('http://localhost:5001/api/owner/upload-theme', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
-          // ⚠️ DO NOT set Content-Type here! The browser does it automatically for FormData.
-        },
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` },
         body: formData
       });
 
       if (response.ok) {
         alert("🚀 SYSTEM_UPDATE: New 3D Theme Injected into Core!");
         setShowThemeModal(false);
-        fetchDashboard(); // Refresh UI
+        fetchDashboard();
       } else {
         alert("Upload failed on the server.");
       }
@@ -233,14 +239,11 @@ const OwnerCMS = () => {
     }
   };
 
-  // ==========================================
-  // 🧩 DYNAMIC WORKFLOW INTERACTIVE HANDLERS
-  // ==========================================
+  // WORKFLOW HANDLERS
   const setWorkflowConfig = (newConfig) => {
     setData(prev => ({ ...prev, workflowConfig: newConfig }));
   };
 
-  // Phases
   const handleAddPhase = () => {
     const phaseName = prompt("Enter new Phase name (e.g., Phase 5: Post-Launch):");
     if (!phaseName) return;
@@ -255,7 +258,6 @@ const OwnerCMS = () => {
     setWorkflowConfig(newConfig);
   };
 
-  // Steps
   const handleAddStep = (pIndex) => {
     const stepTitle = prompt("Enter Step title (e.g., Email Automation):");
     if (!stepTitle) return;
@@ -279,7 +281,6 @@ const OwnerCMS = () => {
     setWorkflowConfig(newConfig);
   };
 
-  // Fields
   const handleAddField = (pIndex, sIndex) => {
     const fieldName = prompt("Enter new Input Field name (e.g., Facebook Pixel ID):");
     if (!fieldName) return;
@@ -295,7 +296,6 @@ const OwnerCMS = () => {
     setWorkflowConfig(newConfig);
   };
 
-  // Save to DB
   const handleSaveWorkflowToDB = async () => {
     try {
       await fetch('http://localhost:5001/api/owner/workflow', {
@@ -303,12 +303,73 @@ const OwnerCMS = () => {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` },
         body: JSON.stringify({ workflowConfig: data.workflowConfig })
       });
-      alert("🚀 Workflow Engine Saved Successfully! Users will now see these changes in their dashboard.");
+      alert("🚀 Workflow Engine Saved Successfully!");
     } catch (err) {
-      alert("Error connecting to backend database. Are you sure your backend supports /api/owner/workflow?");
+      alert("Error connecting to backend database.");
     }
   };
 
+  // 🚀 GLOBAL SETTINGS & LOGO HANDLERS
+  const handleEditHomepageSection = (index, newText) => {
+    const newSections = [...data.settings.homepageSections];
+    newSections[index] = newText;
+    setData(prev => ({ ...prev, settings: { ...prev.settings, homepageSections: newSections } }));
+  };
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setData(prev => ({ ...prev, settings: { ...prev.settings, siteLogo: reader.result } }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // 🚀 SAVE SETTINGS TO BACKEND
+  const handleSaveSettings = async () => {
+    try {
+      const response = await fetch('http://localhost:5001/api/owner/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        },
+        body: JSON.stringify({ settings: data.settings })
+      });
+
+      if (response.ok) {
+        alert("🚀 Settings and Logo saved successfully! They will now reflect on the main website.");
+      } else {
+        alert("Failed to save settings to the database.");
+      }
+    } catch (err) {
+      alert("Error connecting to backend database to save settings.");
+    }
+  };
+
+  // CONTENT EDITOR MODAL LOGIC (Works for ALL Sections)
+  const openContentEditor = (sectionName) => {
+    setEditingSection(sectionName);
+    setTempContentData([...(data.settings.sectionContent?.[sectionName] || [])]);
+  };
+
+  const saveContentEdits = () => {
+    setData(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        sectionContent: {
+          ...prev.settings.sectionContent,
+          [editingSection]: tempContentData
+        }
+      }
+    }));
+    setEditingSection(null);
+    // Auto-save global settings after closing the modal so changes sync immediately
+    setTimeout(() => handleSaveSettings(), 500);
+  };
 
   const menuItems = [
     { id: 'analytics', icon: <LayoutDashboard size={18} />, label: 'Analytics' },
@@ -328,15 +389,35 @@ const OwnerCMS = () => {
     </div>
   );
 
+  const validPublishedProjects = data.projects?.filter(p => p.status === 'Published' || p.publicUrl || p.public_url || p.site_name || p.page_data?.status === 'Published') || [];
+
+  const groupedProjects = validPublishedProjects.reduce((acc, project) => {
+    const ownerName = project.username || project.userEmail || project.user_id || 'Unknown Owner';
+    if (!acc[ownerName]) acc[ownerName] = [];
+    acc[ownerName].push(project);
+    return acc;
+  }, {});
+
   return (
     <div className="min-h-screen w-full bg-[#030303] text-slate-200 flex font-sans overflow-hidden selection:bg-[#ff003c]/30">
 
       {/* 🔴 LEFT SIDEBAR */}
       <motion.aside initial={{ x: -300 }} animate={{ x: 0 }} className="w-72 border-r border-white/5 bg-black/40 backdrop-blur-xl flex flex-col relative z-20">
-        <div className="p-8 border-b border-white/5 relative overflow-hidden">
+
+        {/* DYNAMIC LOGO & HEADER */}
+        <div className="p-8 border-b border-white/5 relative overflow-hidden flex items-center gap-3">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#ff003c] to-transparent opacity-50" />
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3 tracking-widest"><ShieldAlert className="text-[#ff003c]" size={28} /> 3D UNIVERSE</h1>
-          <p className="text-[10px] text-[#ff003c] font-mono mt-2 uppercase tracking-[0.3em]">Owner CMS</p>
+
+          {data.settings?.siteLogo ? (
+            <img src={data.settings.siteLogo} alt="Site Logo" className="w-10 h-10 rounded-full object-cover border-2 border-[#ff003c]/50 shadow-[0_0_15px_rgba(255,0,60,0.3)] shrink-0" />
+          ) : (
+            <ShieldAlert className="text-[#ff003c] shrink-0" size={32} />
+          )}
+
+          <div className="flex flex-col">
+            <h1 className="text-xl font-bold text-white tracking-widest truncate max-w-[150px]">{data.settings?.siteName || '3D UNIVERSE'}</h1>
+            <p className="text-[9px] text-[#ff003c] font-mono mt-0.5 uppercase tracking-[0.2em]">Owner CMS</p>
+          </div>
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
@@ -359,7 +440,6 @@ const OwnerCMS = () => {
       <main className="flex-1 flex flex-col relative h-screen overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#ff003c] opacity-[0.03] blur-[120px] pointer-events-none" />
 
-        {/* TOP HEADER */}
         <header className="px-10 py-6 border-b border-white/5 flex justify-between items-center bg-black/20 backdrop-blur-md z-10">
           <h2 className="text-3xl font-bold text-white capitalize tracking-wide">{activeTab.replace('-', ' ')}</h2>
           <div className="flex items-center gap-4">
@@ -369,18 +449,24 @@ const OwnerCMS = () => {
           </div>
         </header>
 
-        {/* DYNAMIC TAB CONTENT */}
         <div className="flex-1 p-10 overflow-y-auto custom-scrollbar relative z-10">
           <AnimatePresence mode="wait">
 
             {/* 📊 ANALYTICS MODULE */}
             {activeTab === 'analytics' && (
               <motion.div key="analytics" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
+
                 <div className="grid grid-cols-4 gap-6">
                   {[
                     { title: "Total Users", value: data.metrics?.totalUsers || 0, icon: <Users size={20} />, color: "text-blue-400" },
                     { title: "Premium Subs", value: data.metrics?.premiumUsers || 0, icon: <CreditCard size={20} />, color: "text-[#ff003c]" },
-                    { title: "Active Themes", value: data.metrics?.activeThemes || 0, icon: <Palette size={20} />, color: "text-purple-400" },
+                    {
+                      title: "Active Themes",
+                      value: `${data.metrics?.activeThemesCount || MASTER_THEMES.length} / ${MASTER_THEMES.length}`,
+                      icon: <Palette size={20} />,
+                      color: "text-purple-400",
+                      subtext: `Most Used: ${data.metrics?.mostUsedTheme || 'Cyber Neon Mall'}`
+                    },
                     { title: "Estimated Revenue", value: `$${(data.metrics?.premiumUsers || 0) * 15}`, icon: <DollarSign size={20} />, color: "text-green-400" }
                   ].map((stat, i) => (
                     <div key={i} className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden group hover:border-[#ff003c]/50 transition-colors">
@@ -390,9 +476,44 @@ const OwnerCMS = () => {
                       </div>
                       <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest">{stat.title}</h3>
                       <p className="text-3xl font-bold text-white mt-1">{stat.value}</p>
+                      {stat.subtext && <p className="text-[10px] text-[#ff003c] mt-3 font-mono tracking-widest uppercase">{stat.subtext}</p>}
                     </div>
                   ))}
                 </div>
+
+                {/* LIVE ANALYTICS GRAPH */}
+                <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl w-full">
+                  <h3 className="text-white font-bold text-lg mb-6 flex items-center gap-2">
+                    <Activity className="text-[#ff003c]" /> Live System Performance (7 Days)
+                  </h3>
+                  <div className="h-[350px] w-full" key="analytics-chart">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={data.revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#ff003c" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#ff003c" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                        <XAxis dataKey="name" stroke="#ffffff50" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                        <YAxis stroke="#ffffff50" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#0a0a0c', border: '1px solid #ffffff20', borderRadius: '12px' }}
+                          itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: 'bold' }}
+                          labelStyle={{ color: '#888', marginBottom: '4px' }}
+                        />
+                        <Area type="monotone" dataKey="revenue" name="Revenue ($)" stroke="#ff003c" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+                        <Area type="monotone" dataKey="users" name="Active Users" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorUsers)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
               </motion.div>
             )}
 
@@ -445,46 +566,59 @@ const OwnerCMS = () => {
             {activeTab === 'projects' && (
               <motion.div key="projects" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
                 <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
-                  <h3 className="text-white font-bold text-xl mb-6 flex items-center gap-2"><Globe className="text-[#ff003c]" /> User Landing Pages</h3>
+                  <h3 className="text-white font-bold text-xl mb-6 flex items-center gap-2"><Globe className="text-[#ff003c]" /> User Landing Pages (Published Only)</h3>
                   <table className="w-full text-left">
                     <thead className="bg-white/5 border-b border-white/10 text-xs text-slate-400 uppercase tracking-widest">
                       <tr>
-                        <th className="p-4">Project / Owner</th>
+                        <th className="p-4">Project Name</th>
                         <th className="p-4">Status</th>
                         <th className="p-4">Custom Domain</th>
                         <th className="p-4 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {data.projects && data.projects.length > 0 ? (
-                        data.projects.map((project) => (
-                          <tr key={project._id} className="hover:bg-white/5 transition-colors group">
-                            <td className="p-4">
-                              <div className="font-bold text-white text-sm">{project.fullName || "Untitled Project"}</div>
-                              <div className="text-xs text-slate-500 mt-1">@{project.username || 'no-username'}</div>
-                            </td>
-                            <td className="p-4">
-                              <span className="text-green-400 bg-green-500/10 border border-green-500/20 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Active</span>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                <span className={project.customDomain ? "text-cyan-400 font-mono text-sm" : "text-slate-600 text-sm italic"}>
-                                  {project.customDomain || 'Not Configured'}
-                                </span>
-                                <button onClick={() => handleSetDomain(project._id, project.customDomain)} className="text-slate-500 hover:text-white transition-colors bg-black/50 p-1.5 rounded-md border border-white/10">
-                                  <Edit size={12} />
-                                </button>
-                              </div>
-                            </td>
-                            <td className="p-4 text-right flex justify-end gap-2">
-                              <button onClick={() => handleCopyLink(project.username)} className="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 text-xs bg-blue-400/10 px-3 py-1.5 rounded-lg border border-blue-400/20" title="Copy Public Link">
-                                <Globe size={14} /> Link
-                              </button>
-                              <button onClick={() => handleDeleteProject(project._id)} className="text-red-500 hover:text-red-400 bg-red-500/10 p-1.5 rounded-lg border border-red-500/20 transition-colors" title="Delete Project">
-                                <Trash2 size={16} />
-                              </button>
-                            </td>
-                          </tr>
+                      {Object.keys(groupedProjects).length > 0 ? (
+                        Object.entries(groupedProjects).map(([owner, projects]) => (
+                          <React.Fragment key={owner}>
+                            <tr className="bg-white/[0.02] border-b border-white/5">
+                              <td colSpan="4" className="p-3 text-[#ff003c] font-bold text-xs uppercase tracking-widest bg-black/40">
+                                <span className="flex items-center gap-2"><User size={14} /> Owner: {owner}</span>
+                              </td>
+                            </tr>
+                            {projects.map(project => {
+                              const projectName = project.page_data?.setup?.name || project.fullName || project.site_name || "Untitled Project";
+                              const previewUrl = project.publicUrl || project.public_url || `/3DUNIVERSE/${project.site_name || project.username}`;
+
+                              return (
+                                <tr key={project._id} className="hover:bg-white/5 transition-colors group">
+                                  <td className="p-4">
+                                    <div className="font-bold text-white text-sm">{projectName}</div>
+                                  </td>
+                                  <td className="p-4">
+                                    <span className="text-green-400 bg-green-500/10 border border-green-500/20 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Published</span>
+                                  </td>
+                                  <td className="p-4">
+                                    <div className="flex items-center gap-3">
+                                      <span className={project.customDomain ? "text-cyan-400 font-mono text-sm" : "text-slate-600 text-sm italic"}>
+                                        {project.customDomain || 'Not Configured'}
+                                      </span>
+                                      <button onClick={() => handleSetDomain(project._id, project.customDomain)} className="text-slate-500 hover:text-white transition-colors bg-black/50 p-1.5 rounded-md border border-white/10">
+                                        <Edit size={12} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td className="p-4 text-right flex justify-end gap-2">
+                                    <button onClick={() => window.open(previewUrl, '_blank')} className="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 text-xs bg-blue-400/10 px-3 py-1.5 rounded-lg border border-blue-400/20" title="Preview Public Link">
+                                      <Eye size={14} /> Preview
+                                    </button>
+                                    <button onClick={() => handleDeleteProject(project._id)} className="text-red-500 hover:text-red-400 bg-red-500/10 p-1.5 rounded-lg border border-red-500/20 transition-colors" title="Delete Project">
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </React.Fragment>
                         ))
                       ) : (
                         <tr>
@@ -497,7 +631,7 @@ const OwnerCMS = () => {
               </motion.div>
             )}
 
-            {/* 🧩 NEW: DYNAMIC WORKFLOW & FORM BUILDER MODULE */}
+            {/* 🧩 WORKFLOW BUILDER MODULE */}
             {activeTab === 'workflow' && (
               <motion.div key="workflow" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
                 <div className="flex justify-between items-center bg-black/40 border border-white/10 p-6 rounded-2xl backdrop-blur-xl">
@@ -510,7 +644,7 @@ const OwnerCMS = () => {
                       <PlusCircle size={18} /> Add Phase
                     </button>
                     <button onClick={handleSaveWorkflowToDB} className="bg-gradient-to-r from-[#ff003c] to-red-800 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-[0_0_15px_rgba(255,0,60,0.4)] flex items-center gap-2 transition-all hover:scale-105">
-                      <Save size={18} /> Save & Deploy Workflow
+                      <Save size={18} /> Save & Deploy
                     </button>
                   </div>
                 </div>
@@ -518,8 +652,6 @@ const OwnerCMS = () => {
                 <div className="grid grid-cols-1 gap-6">
                   {data.workflowConfig?.map((phaseObj, pIndex) => (
                     <div key={pIndex} className="bg-black/40 border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-
-                      {/* Phase Header */}
                       <div className="bg-white/5 border-b border-white/10 p-4 flex justify-between items-center">
                         <h4 className="text-[#ff003c] font-black uppercase tracking-widest text-sm">{phaseObj.phase}</h4>
                         <div className="flex gap-2">
@@ -527,22 +659,15 @@ const OwnerCMS = () => {
                           <button onClick={() => handleAddStep(pIndex)} className="text-slate-400 hover:text-white flex items-center gap-1 text-xs bg-black/50 px-3 py-1.5 rounded-lg border border-white/10 transition-colors"><PlusCircle size={12} /> Add Step</button>
                         </div>
                       </div>
-
-                      {/* Steps inside Phase */}
                       <div className="p-4 grid grid-cols-1 xl:grid-cols-2 gap-4">
                         {phaseObj.steps.map((step, sIndex) => (
                           <div key={sIndex} className="bg-black/50 border border-white/10 p-5 rounded-xl hover:border-white/20 transition-colors relative group">
-
-                            {/* Step Actions */}
                             <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button onClick={() => handleEditStep(pIndex, sIndex)} className="text-blue-400 hover:text-blue-300 bg-blue-400/10 p-1.5 rounded"><Edit size={14} /></button>
                               <button onClick={() => handleDeleteStep(pIndex, sIndex)} className="text-red-500 hover:text-red-400 bg-red-500/10 p-1.5 rounded"><Trash2 size={14} /></button>
                             </div>
-
                             <h5 className="text-white font-bold text-lg mb-1 pr-16">{step.title}</h5>
                             <p className="text-xs text-slate-400 mb-4">{step.description}</p>
-
-                            {/* Fields Configuration */}
                             <div className="bg-white/5 border border-white/10 rounded-lg p-3">
                               <h6 className="text-[10px] text-slate-500 uppercase font-bold mb-2 flex items-center gap-1"><Type size={10} /> Input Fields Displayed</h6>
                               <div className="flex flex-wrap gap-2">
@@ -555,7 +680,6 @@ const OwnerCMS = () => {
                                 <button onClick={() => handleAddField(pIndex, sIndex)} className="bg-[#ff003c]/10 border border-[#ff003c]/30 text-[#ff003c] text-xs px-2 py-1 rounded hover:bg-[#ff003c]/20 transition-colors">+ Add Field</button>
                               </div>
                             </div>
-
                           </div>
                         ))}
                       </div>
@@ -568,8 +692,6 @@ const OwnerCMS = () => {
             {/* 🎨 THEME ENGINE MODULE */}
             {activeTab === 'themes' && (
               <motion.div key="themes" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-10">
-
-                {/* Header Management Bar */}
                 <div className="flex justify-between items-center bg-black/40 border border-white/10 p-6 rounded-2xl backdrop-blur-xl">
                   <div>
                     <h3 className="text-white font-bold text-xl">Theme Database</h3>
@@ -580,32 +702,25 @@ const OwnerCMS = () => {
                   </button>
                 </div>
 
-                {/* Upload Modal */}
                 {showThemeModal && (
                   <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
                     <div className="bg-[#0a0a0a] border border-[#ff003c]/30 rounded-2xl p-6 w-full max-w-md">
                       <h3 className="text-white font-bold text-xl mb-4">Upload/Edit Theme</h3>
                       <form onSubmit={handleThemeUpload} className="space-y-4">
                         <input type="text" name="name" placeholder="Theme Name (e.g., The Tech-Nexus)" className="w-full bg-white/5 border border-white/10 rounded p-3 text-white focus:border-[#ff003c]" required />
-
                         <div className="flex gap-2">
                           <select name="category" className="flex-1 bg-white/5 border border-white/10 rounded p-3 text-white focus:border-[#ff003c] outline-none cursor-pointer" required defaultValue="">
                             <option value="" disabled>Select a Category...</option>
-                            {categories.map((cat, i) => (
-                              <option key={i} value={cat} className="bg-slate-900 text-white">{cat}</option>
-                            ))}
+                            {categories.map((cat, i) => <option key={i} value={cat} className="bg-slate-900 text-white">{cat}</option>)}
                           </select>
                           <button type="button" onClick={handleAddNewCategory} className="px-4 bg-[#ff003c]/10 hover:bg-[#ff003c]/20 text-[#ff003c] rounded-lg text-sm font-bold border border-[#ff003c]/30 transition-colors whitespace-nowrap">+ Add New</button>
                         </div>
-
                         <div className="bg-white/5 border border-white/10 rounded p-3">
                           <label className="text-xs text-slate-400 block mb-2 uppercase font-bold">Select Theme File (.jsx)</label>
                           <input type="file" name="themeFile" accept=".jsx" className="text-white text-sm w-full" required />
                         </div>
-
                         <label className="flex items-center gap-3 text-white cursor-pointer"><input type="checkbox" name="isPremium" /> Requires PRO Subscription</label>
                         <label className="flex items-center gap-3 text-white cursor-pointer"><input type="checkbox" name="supportsVideoBg" defaultChecked /> Enable Video Background</label>
-
                         <div className="flex justify-end gap-2 mt-6">
                           <button type="button" onClick={() => setShowThemeModal(false)} className="px-4 py-2 text-slate-400">Cancel</button>
                           <button type="submit" className="px-4 py-2 bg-[#ff003c] text-white font-bold rounded shadow-[0_0_15px_rgba(255,0,60,0.4)]">Upload Theme</button>
@@ -615,116 +730,40 @@ const OwnerCMS = () => {
                   </div>
                 )}
 
-                {/* 🚀 BANNERS & CATEGORY CLUSTERS LAYER */}
                 <div className="space-y-12">
-                  {CUSTOM_CATEGORIES.map((catName) => {
+                  {categories.map((catName) => {
                     const matchedThemes = MASTER_THEMES.filter(t => t.category === catName);
-
                     return (
                       <div key={catName} className="space-y-4">
-
-                        {/* Section Header Banner */}
                         <div className="flex items-center gap-3 border-b border-white/5 pb-2">
-                          <span className="text-xs font-mono uppercase tracking-[0.2em] text-[#ff003c] font-black bg-[#ff003c]/10 border border-[#ff003c]/20 px-3 py-1 rounded">
-                            {catName}
-                          </span>
-                          <span className="text-xs font-mono text-slate-500">
-                            ({matchedThemes.length} Nodes Configured)
-                          </span>
+                          <span className="text-xs font-mono uppercase tracking-[0.2em] text-[#ff003c] font-black bg-[#ff003c]/10 border border-[#ff003c]/20 px-3 py-1 rounded">{catName}</span>
+                          <span className="text-xs font-mono text-slate-500">({matchedThemes.length} Nodes Configured)</span>
                           <div className="flex-1 h-[1px] bg-gradient-to-r from-white/10 to-transparent ml-2" />
                         </div>
-
-                        {/* Themes Content Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                           {matchedThemes.map((theme) => (
                             <div key={theme.id} className="bg-[#0b0b0d] border border-white/10 rounded-2xl overflow-hidden group flex flex-col justify-between shadow-xl">
-
-                              {/* 🔮 CINEMATIC LIVE PREVIEW CANVAS OVERLAY MOCKUP */}
                               <div className={`h-40 ${theme.previewClass} relative flex items-center justify-center border-b border-white/5 overflow-hidden`}>
-
-                                {theme.element === 'neon-grid' && (
-                                  <div className="absolute inset-0 bg-[linear-gradient(to_right,#ff003c10_1px,transparent_1px),linear-gradient(to_bottom,#00ffff10_1px,transparent_1px)] bg-[size:14px_24px] rotate-12 scale-150" />
-                                )}
-                                {theme.element === 'orbit-rings' && (
-                                  <div className="w-20 h-20 rounded-full border border-blue-400/30 border-dashed animate-spin duration-10000 relative">
-                                    <div className="w-2 h-2 rounded-full bg-cyan-400 absolute top-2 left-2 shadow-[0_0_10px_#00ffff]" />
-                                  </div>
-                                )}
-                                {theme.element === 'vector-lines' && (
-                                  <div className="absolute inset-x-0 bottom-0 h-16 bg-[linear-gradient(to_bottom,transparent,#00ffff20)] [transform:perspective(50px)_rotateX(60deg)] border-t border-cyan-500/40" />
-                                )}
-                                {theme.element === 'vortex-core' && (
-                                  <div className="w-16 h-16 rounded-full bg-purple-500/10 border-2 border-purple-500/40 animate-pulse flex items-center justify-center">
-                                    <div className="w-8 h-8 rounded-full border border-cyan-400/60 animate-ping" />
-                                  </div>
-                                )}
-                                {theme.element === 'neural-mesh' && (
-                                  <div className="flex gap-4 opacity-40">
-                                    <div className="w-3 h-3 rounded-full bg-cyan-400 animate-bounce" />
-                                    <div className="w-3 h-3 rounded-full bg-purple-400 animate-bounce [animation-delay:0.2s]" />
-                                    <div className="w-3 h-3 rounded-full bg-blue-400 animate-bounce [animation-delay:0.4s]" />
-                                  </div>
-                                )}
-                                {theme.element === 'city-wireframe' && (
-                                  <div className="flex items-end gap-1.5 h-16 bottom-0 absolute opacity-30">
-                                    <div className="w-4 h-12 border border-cyan-500/40" />
-                                    <div className="w-6 h-16 border border-purple-500/40" />
-                                    <div className="w-5 h-8 border border-blue-500/40" />
-                                  </div>
-                                )}
-                                {!['neon-grid', 'orbit-rings', 'vector-lines', 'vortex-core', 'neural-mesh', 'city-wireframe'].includes(theme.element) && (
-                                  <div className="absolute inset-0 bg-white/[0.01] flex items-center justify-center">
-                                    <Palette size={36} className="text-white/5 group-hover:text-white/20 transition-colors" />
-                                  </div>
-                                )}
-
-                                <span className="absolute bottom-3 left-3 text-[10px] font-mono text-slate-400 bg-black/60 px-2 py-0.5 rounded border border-white/10">
-                                  {theme.id}
-                                </span>
-
-                                {theme.premium && (
-                                  <span className="absolute top-3 right-3 bg-[#ff003c]/20 text-[#ff003c] border border-[#ff003c]/50 text-[10px] font-bold px-2 py-1 rounded tracking-wide shadow-md">
-                                    PRO
-                                  </span>
-                                )}
-                                {theme.videoBg && (
-                                  <span className="absolute top-3 left-3 bg-blue-500/20 text-blue-400 border border-blue-500/50 text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1">
-                                    <Video size={10} /> 3D SPACE
-                                  </span>
-                                )}
+                                <Palette size={36} className="text-white/10 group-hover:text-white/30 transition-colors relative z-10" />
+                                <span className="absolute bottom-3 left-3 text-[10px] font-mono text-slate-400 bg-black/60 px-2 py-0.5 rounded border border-white/10">{theme.id}</span>
+                                {theme.premium && <span className="absolute top-3 right-3 bg-[#ff003c]/20 text-[#ff003c] border border-[#ff003c]/50 text-[10px] font-bold px-2 py-1 rounded tracking-wide shadow-md">PRO</span>}
                               </div>
-
-                              {/* Info Content Area */}
                               <div className="p-5 space-y-4">
                                 <div>
-                                  <h4 className="text-white font-bold text-lg leading-tight group-hover:text-[#ff003c] transition-colors">
-                                    {theme.name}
-                                  </h4>
-                                  <p className="text-[11px] font-mono text-slate-500 uppercase mt-0.5 tracking-wider">
-                                    Operational Live Environment
-                                  </p>
-                                </div>
-                                <div className="flex gap-2 pt-2 border-t border-white/5">
-                                  <button type="button" className="flex-1 bg-white/5 hover:bg-white/10 text-white py-2 rounded-lg text-xs font-bold transition-colors border border-white/5">
-                                    Edit Metadata
-                                  </button>
-                                  <button type="button" className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors">
-                                    <Trash2 size={16} />
-                                  </button>
+                                  <h4 className="text-white font-bold text-lg leading-tight group-hover:text-[#ff003c] transition-colors">{theme.name}</h4>
+                                  <p className="text-[11px] font-mono text-slate-500 uppercase mt-0.5 tracking-wider">Operational Live Environment</p>
                                 </div>
                               </div>
-
                             </div>
                           ))}
                         </div>
-
                       </div>
                     );
                   })}
                 </div>
-
               </motion.div>
             )}
+
             {/* ⚙️ GLOBAL CONFIG MODULE */}
             {activeTab === 'settings' && (
               <motion.div key="settings" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="grid grid-cols-2 gap-8">
@@ -732,35 +771,75 @@ const OwnerCMS = () => {
                 <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl relative">
                   <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Settings className="text-[#ff003c]" /> Core Configuration</h3>
                   <form className="space-y-4">
-                    <div><label className="text-[10px] text-slate-400 uppercase font-bold mb-2 block">System Identity</label><input type="text" defaultValue="3D UNIVERSE" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white" /></div>
-                    <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
-                      <div><h4 className="text-sm font-bold text-white">Maintenance Mode</h4></div>
-                      <input type="checkbox" className="w-5 h-5 accent-[#ff003c]" />
+
+                    {/* 🚀 BRAND LOGO UPLOADER */}
+                    <div className="flex items-center gap-4 border border-white/10 p-4 rounded-xl bg-white/5">
+                      <div className="w-16 h-16 rounded-full bg-black border border-[#ff003c]/50 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_0_15px_rgba(255,0,60,0.2)]">
+                        {data.settings.siteLogo ? <img src={data.settings.siteLogo} alt="Logo" className="w-full h-full object-cover" /> : <ImageIcon size={24} className="text-slate-500" />}
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Upload Brand Logo (PNG/JPEG)</label>
+                        <input type="file" accept="image/png, image/jpeg" onChange={handleLogoUpload} className="text-xs text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-[#ff003c]/10 file:text-[#ff003c] hover:file:bg-[#ff003c]/20 cursor-pointer" />
+                      </div>
                     </div>
-                    <button type="submit" className="w-full py-4 rounded-xl text-white font-bold bg-[#ff003c] hover:scale-[1.02] transition-transform">COMMIT SETTINGS</button>
+
+                    <div>
+                      <label className="text-[10px] text-slate-400 uppercase font-bold mb-2 block">System Identity (Website Name)</label>
+                      <input type="text" value={data.settings?.siteName || ''} onChange={(e) => setData(prev => ({ ...prev, settings: { ...prev.settings, siteName: e.target.value } }))} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-[#ff003c] outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 uppercase font-bold mb-2 block">Website Title / Tagline</label>
+                      <input type="text" value={data.settings?.heroTagline || ''} onChange={(e) => setData(prev => ({ ...prev, settings: { ...prev.settings, heroTagline: e.target.value } }))} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-[#ff003c] outline-none" />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl mt-4">
+                      <div><h4 className="text-sm font-bold text-white">Maintenance Mode</h4></div>
+                      <input
+                        type="checkbox"
+                        checked={data.settings?.maintenanceMode || false}
+                        onChange={(e) => setData(prev => ({ ...prev, settings: { ...prev.settings, maintenanceMode: e.target.checked } }))}
+                        className="w-5 h-5 accent-[#ff003c]"
+                      />
+                    </div>
+
+                    {/* 🚀 BOUND COMMIT BUTTON TO THE NEW SAVE HANDLER */}
+                    <button
+                      type="button"
+                      onClick={handleSaveSettings}
+                      className="w-full py-4 rounded-xl text-white font-bold bg-[#ff003c] hover:scale-[1.02] transition-transform shadow-[0_0_15px_rgba(255,0,60,0.4)] flex items-center justify-center gap-2"
+                    >
+                      <Save size={18} /> COMMIT SETTINGS & SYNC TO WEBSITE
+                    </button>
                   </form>
                 </div>
 
                 <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
                   <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Globe className="text-[#ff003c]" /> Manage Homepage Sections</h3>
-                  <p className="text-xs text-slate-400 mb-6">Toggle which sections appear on your public landing page.</p>
+                  <p className="text-xs text-slate-400 mb-6">Edit section names, toggle visibility, and configure internal content matrices.</p>
                   <div className="space-y-3">
                     {data.settings?.homepageSections?.map((section, idx) => (
-                      <div key={idx} className="flex justify-between items-center bg-white/5 border border-white/10 p-3 rounded-lg">
-                        <span className="text-white text-sm font-bold">{section}</span>
-                        <div className="flex gap-2">
+                      <div key={idx} className="flex justify-between items-center bg-white/5 border border-white/10 p-2 rounded-lg gap-3 hover:border-white/30 transition-colors">
+                        <input
+                          type="text"
+                          value={section}
+                          onChange={(e) => handleEditHomepageSection(idx, e.target.value)}
+                          className="flex-1 bg-transparent text-white text-sm font-bold border-none outline-none focus:ring-1 focus:ring-[#ff003c]/50 px-3 py-1.5 rounded transition-all"
+                        />
+                        <div className="flex gap-2 shrink-0 px-2 items-center">
+                          <button onClick={() => openContentEditor(section)} className="text-cyan-400 hover:text-cyan-300 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 bg-cyan-400/10 px-2 py-1.5 rounded border border-cyan-400/20 mr-2">
+                            <Edit size={12} /> Edit Content
+                          </button>
                           <input type="checkbox" defaultChecked className="w-4 h-4 accent-green-500 cursor-pointer" />
-                          <button className="text-red-500 hover:text-red-400"><Trash2 size={16} /></button>
+                          <button className="text-red-500 hover:text-red-400 p-1"><Trash2 size={16} /></button>
                         </div>
                       </div>
                     ))}
-                    <button className="text-xs text-[#ff003c] font-bold">+ Add Custom Section</button>
+                    <button className="text-xs text-[#ff003c] font-bold mt-2 hover:underline">+ Add Custom Section</button>
                   </div>
                 </div>
 
                 <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl col-span-2">
                   <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Layout className="text-[#ff003c]" /> User Dashboard Layout Manager</h3>
-                  <p className="text-xs text-slate-400 mb-6">Control exactly what your users see in their dashboard side-menu.</p>
                   <div className="grid grid-cols-3 gap-4">
                     {data.settings?.userDashboardTabs?.map((tab, idx) => (
                       <div key={idx} className="flex justify-between items-center bg-white/5 border border-white/10 p-4 rounded-xl">
@@ -770,7 +849,6 @@ const OwnerCMS = () => {
                     ))}
                   </div>
                 </div>
-
               </motion.div>
             )}
 
@@ -783,11 +861,76 @@ const OwnerCMS = () => {
                 </div>
               </motion.div>
             )}
-
           </AnimatePresence>
-        </div>
-      </main>
-    </div>
+        </div >
+      </main >
+
+      {/* 🚀 GLOBAL CONTENT EDITOR MODAL */}
+      {
+        editingSection && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#0a0a0c] border border-[#ff003c]/40 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+              <div className="p-5 border-b border-white/10 flex justify-between items-center bg-white/5">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Edit size={18} className="text-[#ff003c]" /> Editing Content: {editingSection}
+                </h3>
+                <button onClick={() => setEditingSection(null)} className="text-slate-400 hover:text-white"><X size={24} /></button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+                {(() => {
+                  const isFaq = editingSection.toLowerCase() === 'faq' || editingSection.toLowerCase() === 'faqs';
+                  const isPricing = editingSection.toLowerCase() === 'pricing';
+                  const label1 = isFaq ? 'Question' : isPricing ? 'Plan Name' : 'Title';
+                  const label2 = isFaq ? 'Answer' : isPricing ? 'Price & Details' : 'Description';
+
+                  return (
+                    <>
+                      {tempContentData.map((item, idx) => (
+                        <div key={item.id || idx} className="bg-white/5 border border-white/10 rounded-xl p-4 relative group">
+                          <button onClick={() => setTempContentData(tempContentData.filter((_, i) => i !== idx))} className="absolute top-4 right-4 text-red-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Trash2 size={16} />
+                          </button>
+                          <div className="space-y-3 pr-8">
+                            <div>
+                              <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">{label1}</label>
+                              <input type="text" value={item.k1 || ''} onChange={(e) => {
+                                const newData = [...tempContentData];
+                                newData[idx].k1 = e.target.value;
+                                setTempContentData(newData);
+                              }} className="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#ff003c]" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">{label2}</label>
+                              <textarea rows="2" value={item.k2 || ''} onChange={(e) => {
+                                const newData = [...tempContentData];
+                                newData[idx].k2 = e.target.value;
+                                setTempContentData(newData);
+                              }} className="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#ff003c] resize-none" />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <button onClick={() => setTempContentData([...tempContentData, { id: Date.now(), k1: '', k2: '' }])} className="w-full py-3 rounded-xl border border-dashed border-white/20 text-slate-400 font-bold hover:text-white hover:border-[#ff003c] hover:bg-[#ff003c]/10 transition-colors flex items-center justify-center gap-2 text-sm">
+                        <PlusCircle size={16} /> Add New Item to {editingSection}
+                      </button>
+                    </>
+                  );
+                })()}
+              </div>
+
+              <div className="p-5 border-t border-white/10 bg-white/5 flex justify-end gap-3">
+                <button onClick={() => setEditingSection(null)} className="px-5 py-2 rounded-xl font-bold text-slate-400 hover:text-white transition-colors">Cancel</button>
+                <button onClick={saveContentEdits} className="px-6 py-2 bg-[#ff003c] text-white font-bold rounded-xl shadow-[0_0_15px_rgba(255,0,60,0.4)] flex items-center gap-2 hover:scale-[1.02] transition-transform">
+                  <Save size={16} /> Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+    </div >
   );
 };
 

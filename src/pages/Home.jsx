@@ -149,6 +149,7 @@ const Home = () => {
           <nav className="w-full bg-black/40 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50 shadow-2xl">
             <div className="max-w-[1400px] mx-auto px-6 py-4 flex justify-between items-center">
               <div className="flex items-center gap-3 group cursor-pointer" onClick={() => navigate('/')}>
+
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
                   <Sparkles className="text-white animate-pulse" size={20} />
                 </div>
