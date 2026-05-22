@@ -173,14 +173,14 @@ export default function Dashboard() {
     const fetchMongoData = async () => {
       try {
         const timestamp = new Date().getTime();
-        const mongoResponse = await fetch(`http://localhost:5001/api/user/portfolio/${currentUser.id}?t=${timestamp}`);
+        const mongoResponse = await fetch(`/api/user/portfolio/${currentUser.id}?t=${timestamp}`);
         if (mongoResponse.ok) {
           const mongoData = await mongoResponse.json();
           if (mongoData.user) {
             setUserTier(mongoData.user.plan === 'pro' || mongoData.user.plan === 'premium' ? 'pro' : 'free');
           }
         }
-        await fetch('http://localhost:5001/api/owner/sync-user', {
+        await fetch('/api/owner/sync-user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -199,7 +199,7 @@ export default function Dashboard() {
   const handleBuyPro = async () => {
     if (!currentUser) return alert("Please log in to upgrade.");
     try {
-      const response = await fetch('http://localhost:5001/api/payment/create-checkout-session', {
+      const response = await fetch('/api/payment/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid: currentUser.id, plan: 'pro' })
