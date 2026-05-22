@@ -18,31 +18,31 @@ const Login = () => {
     setLoading(true);
     try {
       if (isRegistering) {
-        await signupWithEmail(email, password);
-        alert("Account Created! You can now log in.");
+        // 🚀 1. Capture the response and show the smart message
+        const response = await signupWithEmail(email, password);
+        alert(response.message);
+
         setIsRegistering(false); // Switch view back to Login
+        setPassword(''); // Clear the password field for safety
       } else {
         await loginWithEmail(email, password);
-        // Supabase will automatically log them in and redirect them based on AuthContext
+        // Supabase will automatically log them in and redirect them
       }
     } catch (error) {
-      if (error.message === "Email not confirmed") {
-        alert("Please check your email and click the verification link before logging in.");
-      } else {
-        alert("Error: " + error.message);
-      }
+      // 🚀 2. AuthContext already formats our errors perfectly now!
+      alert(error.message);
     } finally {
       setLoading(false);
     }
-
   };
 
   // Handle Forgot Password
   const handleForgotPassword = async () => {
     if (!email) return alert("Please type your email in the box first to reset your password.");
     try {
-      await resetPassword(email);
-      alert("Password reset email sent! Check your inbox.");
+      // 🚀 3. Capture the response and show the smart message
+      const response = await resetPassword(email);
+      alert(response.message);
     } catch (error) {
       alert("Error: " + error.message);
     }

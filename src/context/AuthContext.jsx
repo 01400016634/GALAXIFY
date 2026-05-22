@@ -55,7 +55,8 @@ export function AuthProvider({ children }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+        // Changed to dashboard so they go straight to the app after Google approves them
+        redirectTo: `${window.location.origin}/dashboard`
       }
     });
     if (error) throw error;
@@ -63,42 +64,59 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     await supabase.auth.signOut();
-    window.location.href = '/login';
+    window.location.href = '/'; // Send them to the homepage/login after logout
   };
 
-  // 🚀 NEW: Supabase Email & Password Signup
+  // 🚀 UPDATED: Supabase Email & Password Signup (Handles Verification)
   const signupWithEmail = async (email, password) => {
     const { data, error } = await supabase.auth.signUp({
       email: email,
       password: password,
       options: {
-        // This tells Supabase where to send the user after they click the email link
         emailRedirectTo: `${window.location.origin}/dashboard`
       }
     });
 
-    if (error) throw error;
+    if (error) {
+      throw new Error(error.message);
+    }
 
-    // data.user.identities will be empty if they haven't verified yet
-    return data;
+    // If "Confirm Email" is ON in Supabase, session will be null here until they click the link.
+    if (data.user && !data.session) {
+      return { success: true, message: "Verification email sent! Please check your inbox before logging in." };
+    }
+
+    return { success: true, message: "Signup successful!" };
   };
-  // 🚀 NEW: Supabase Email & Password Login
+
+  // 🚀 UPDATED: Supabase Email & Password Login (Catches unverified users)
   const loginWithEmail = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email,
       password: password,
     });
-    if (error) throw error;
+
+    if (error) {
+      // Supabase returns "Invalid login credentials" if the email isn't verified yet
+      if (error.message === 'Invalid login credentials') {
+        throw new Error("Invalid email/password, OR you haven't verified your email yet!");
+      }
+      throw new Error(error.message);
+    }
+
     return data;
   };
 
-  // 🚀 NEW: Supabase Password Reset
+  // 🚀 UPDATED: Supabase Password Reset
   const resetPassword = async (email) => {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`, // Where they go after clicking the email link
+      redirectTo: `${window.location.origin}/reset-password`,
     });
-    if (error) throw error;
-    return data;
+
+    if (error) {
+      throw new Error(error.message);
+    }
+    return { success: true, message: "Password reset link sent to your email!" };
   };
 
   return (
@@ -106,9 +124,9 @@ export function AuthProvider({ children }) {
       currentUser,
       loading,
       loginWithGoogle,
-      signupWithEmail,  // <-- Exported for Login.jsx
-      loginWithEmail,   // <-- Exported for Login.jsx
-      resetPassword,    // <-- Exported for Login.jsx
+      signupWithEmail,
+      loginWithEmail,
+      resetPassword,
       logout
     }}>
       {children}

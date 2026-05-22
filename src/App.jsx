@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 // IMPORT YOUR PAGES
 import Home from './pages/Home';
 import Login from './pages/Login';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import AuthCallback from './pages/AuthCallback';
 import PortfolioView from './pages/PortfolioView';
@@ -49,6 +50,8 @@ function App() {
             path="/admin"
             element={hasOwnerAccess ? <OwnerCMS /> : <OwnerLogin />}
           />
+          {/* 🚀 ADD THIS NEW ROUTE */}
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Protected Creator Dashboard */}
           <Route
