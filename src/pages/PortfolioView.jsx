@@ -228,8 +228,6 @@ const PortfolioView = () => {
       </div>
     );
   }
-  // 🚀 SMART CHECKOUT ENGINE (UPDATED FOR MODAL)
-  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const handleInitiatePurchase = (block) => {
     // Identify the item and price based on the niche template
@@ -349,7 +347,7 @@ const PortfolioView = () => {
           )}
         </div>
 
-        // 🚀 DYNAMIC BLOCKS MAPPER
+
         {data.blocks && data.blocks.length > 0 && (
           data.blocks.map((block) => {
             if (block.title.toLowerCase() === 'hero') return null;
