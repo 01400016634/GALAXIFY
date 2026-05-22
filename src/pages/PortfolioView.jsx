@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { Chrome, Facebook, Twitter, Instagram, Youtube, Linkedin, Mail, MessageSquare, User, ChevronUp } from 'lucide-react';
+import CheckoutModal from '../components/CheckoutModal';
+
 
 // 🚀 1. IMPORT YOUR 15 AAA THEMES
 import ThemeNeonMall from '../themes/ecommerce/ThemeNeonMall';
@@ -144,7 +146,7 @@ const PortfolioView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isScrolled, setIsScrolled] = useState(false);
-
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   // Update your existing scroll listener to track this new state
@@ -226,32 +228,19 @@ const PortfolioView = () => {
       </div>
     );
   }
-  // 🚀 SMART CHECKOUT ENGINE
-  const handleCheckout = async (block) => {
-    // 1. Get current user
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      alert('Please sign in to complete your purchase!');
-      window.location.href = `/client-portal/${username}`;
-      return;
-    }
+  // 🚀 SMART CHECKOUT ENGINE (UPDATED FOR MODAL)
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
-    // 2. Identify the item and price (using the dynamic fields)
-    const itemName = block.customFields?.productName || block.customFields?.courseTitle || block.customFields?.serviceName || 'Item';
-    const price = block.customFields?.price || '0';
+  const handleInitiatePurchase = (block) => {
+    // Identify the item and price based on the niche template
+    const itemName = block.customFields?.productName || block.customFields?.courseTitle || block.customFields?.serviceName || 'Premium Item';
+    const price = block.customFields?.price || '0.00';
 
-    // 3. Send to Supabase 'client_requests' table (The Bridge to your CRM)
-    const { error } = await supabase.from('client_requests').insert({
-      site_name: username,
-      customer_email: session.user.email,
-      industry: data.setup?.category || 'ecommerce',
-      request_type: 'order',
-      status: 'Pending',
-      payload: { item: itemName, price: price }
+    // Trigger the modal to pop up with this data
+    setSelectedProduct({
+      name: itemName,
+      price: price
     });
-
-    if (error) alert("Checkout failed: " + error.message);
-    else alert("✅ Success! Your order has been placed. Track it in your Portal.");
   };
 
   const selectedTheme = data.setup?.themeId || 'theme-1';
@@ -396,7 +385,7 @@ const PortfolioView = () => {
 
                       {/* Pop Button */}
                       <button
-                        onClick={() => handleCheckout(block)}
+                        onClick={() => handleInitiatePurchase(block)}
                         className="w-full bg-cyan-600 hover:bg-cyan-500 text-white py-4 rounded-xl font-black uppercase tracking-widest transition-all duration-300 shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.6)] hover:scale-[1.02] active:scale-[0.98]"
                       >
                         {block.cta?.buttonText || 'Buy Now'}
@@ -478,7 +467,14 @@ const PortfolioView = () => {
         </div>
 
       )}
-
+      {/* 🚀 THE CHECKOUT MODAL INJECTION */}
+      {selectedProduct && (
+        <CheckoutModal
+          product={selectedProduct}
+          pageId={username} // Passes the client's username so it goes to their specific CRM
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
     </div>
 
   );
