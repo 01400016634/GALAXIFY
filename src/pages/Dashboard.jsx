@@ -221,7 +221,7 @@ export default function Dashboard() {
     const fetchUserData = async () => {
       try {
         // A. Sync user to MongoDB (so they exist in your CMS)
-        await fetch('http://localhost:5001/api/owner/sync-user', {
+        await fetch('/api/owner/sync-user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -232,7 +232,7 @@ export default function Dashboard() {
         });
 
         // B. Fetch MongoDB Plan & Portfolio
-        const mongoResponse = await fetch(`http://localhost:5001/api/user/portfolio/${currentUser.id}`);
+        const mongoResponse = await fetch(`/api/user/portfolio/${currentUser.id}`);
         if (mongoResponse.ok) {
           const mongoData = await mongoResponse.json();
 
@@ -277,7 +277,7 @@ export default function Dashboard() {
   const handleBuyPro = async () => {
     if (!currentUser) return alert("Please log in to upgrade.");
     try {
-      const response = await fetch('http://localhost:5001/api/payment/create-checkout-session', {
+      const response = await fetch('/api/payment/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid: currentUser.id, plan: 'pro' })
@@ -421,7 +421,7 @@ export default function Dashboard() {
     if (!window.confirm("Are you sure? This will permanently delete your project.")) return;
 
     try {
-      const response = await fetch(`http://localhost:5001/api/user/project/${projectId}`, {
+      const response = await fetch(`/api/user/project/${projectId}`, {
         method: 'DELETE',
       });
 
@@ -538,100 +538,6 @@ export default function Dashboard() {
     setPageData(prev => ({ ...prev, blocks: prev.blocks.filter(b => b.id !== blockId) }));
   };
 
-  // ==========================================
-  // RENDER FUNCTIONS (ANALYTICS, PAGES, INV, SETTINGS STAY THE SAME)
-  // ==========================================
-  // 🚀 NEW PROPER REACT COMPONENT FOR THE CRM (100% Mobile Responsive)
-  const OwnerCRM = ({ selectedProjectId, savedPages, setSelectedProjectId }) => {
-    const [requests, setRequests] = useState([]);
-
-    useEffect(() => {
-      const fetchRequests = async () => {
-        if (!selectedProjectId) return;
-        const { data } = await supabase
-          .from('client_requests')
-          .select('*')
-          .eq('site_name', selectedProjectId)
-          .order('created_at', { ascending: false });
-        if (data) setRequests(data);
-      };
-      fetchRequests();
-    }, [selectedProjectId]);
-
-    const updateStatus = async (id, newStatus) => {
-      await supabase.from('client_requests').update({ status: newStatus }).eq('id', id);
-      setRequests(requests.map(req => req.id === id ? { ...req, status: newStatus } : req));
-    };
-
-    return (
-      <div className="p-4 md:p-8 h-full overflow-y-auto custom-scrollbar space-y-6 md:space-y-8 pb-24">
-
-        {/* Responsive Header Box */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white/5 p-5 md:p-6 rounded-2xl border border-white/10 gap-5 shadow-lg">
-          <div>
-            <h2 className="text-xl md:text-2xl font-black text-white">Customer CRM & Orders</h2>
-            <p className="text-xs md:text-sm text-gray-400 mt-1">Manage incoming orders, bookings, and requests.</p>
-          </div>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto bg-black/30 p-3 md:p-0 md:bg-transparent rounded-xl md:rounded-none">
-            <label className="text-xs md:text-sm font-bold text-gray-400 whitespace-nowrap">Select Project:</label>
-            <select
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="w-full sm:w-auto bg-black/80 md:bg-black/50 border border-white/10 rounded-xl px-4 py-3 md:py-2 text-white outline-none cursor-pointer focus:border-cyan-500 text-sm"
-            >
-              {savedPages.map(p => <option key={p.id} value={p.id}>{p.setup?.name || 'Untitled'}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {/* Responsive Orders List */}
-        <div className="space-y-4">
-          {requests.map(req => (
-            <div key={req.id} className="bg-black/40 md:bg-white/5 p-5 md:p-6 rounded-xl border border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-cyan-500/30 transition-colors">
-
-              {/* Order Details (Left side) */}
-              <div className="w-full md:w-auto border-b border-white/5 md:border-none pb-4 md:pb-0">
-                <p className="text-cyan-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">
-                  {req.industry} • {req.request_type}
-                </p>
-                <p className="text-white font-bold text-base md:text-lg truncate max-w-full md:max-w-md">
-                  {req.customer_email}
-                </p>
-                <p className="text-[10px] text-gray-500 mt-2 font-mono bg-black/50 px-2 py-1 rounded inline-block">
-                  ID: {req.id.slice(0, 8)}
-                </p>
-              </div>
-
-              {/* Status Updater (Right side) */}
-              <div className="w-full md:w-auto flex items-center pt-2 md:pt-0">
-                <select
-                  value={req.status}
-                  onChange={(e) => updateStatus(req.id, e.target.value)}
-                  className={`w-full md:w-auto bg-black text-white px-4 py-3 md:py-2 rounded-lg border border-white/20 outline-none focus:border-cyan-500 font-bold text-sm shadow-inner transition-colors ${req.status === 'Completed' ? 'text-green-400 border-green-500/30' :
-                    req.status === 'Processing' ? 'text-cyan-400 border-cyan-500/30' : ''
-                    }`}
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Processing">Processing</option>
-                  <option value="Completed">Completed / Shipped</option>
-                  <option value="Confirmed">Confirmed</option>
-                </select>
-              </div>
-
-            </div>
-          ))}
-
-          {requests.length === 0 && (
-            <div className="p-8 text-center bg-black/20 rounded-2xl border border-white/5 border-dashed">
-              <Users size={32} className="mx-auto text-gray-600 mb-3" />
-              <p className="text-gray-400 font-medium text-sm">No customer requests found for this project.</p>
-              <p className="text-gray-600 text-xs mt-1">When users submit orders or forms on your live site, they will appear here.</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
 
   const renderAnalytics = () => {
     // 1. Safely attempt to find an active project

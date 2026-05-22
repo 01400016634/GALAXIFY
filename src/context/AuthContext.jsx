@@ -51,11 +51,11 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // ✅ CORRECT (Dynamically uses Vercel or Localhost)
   const loginWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        // Changed to dashboard so they go straight to the app after Google approves them
         redirectTo: `${window.location.origin}/dashboard`
       }
     });
