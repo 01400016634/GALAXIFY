@@ -122,7 +122,7 @@ const MENU_ITEMS = [
   { id: 'settings', label: 'Account Settings', icon: Settings }
 ];
 
-// 🚀 FIXED: Now a standalone component, hooks will work perfectly!
+// 🚀 1. THE ADVANCED CRM COMPONENT
 const OwnerCRM = ({ selectedProjectId, savedPages, setSelectedProjectId }) => {
   const [requests, setRequests] = useState([]);
 
@@ -145,39 +145,66 @@ const OwnerCRM = ({ selectedProjectId, savedPages, setSelectedProjectId }) => {
   };
 
   return (
-    <div className="p-4 md:p-8 h-full overflow-y-auto custom-scrollbar space-y-6">
-      <div className="flex justify-between items-center bg-white/5 p-6 rounded-2xl border border-white/10">
+    <div className="p-4 md:p-8 h-full overflow-y-auto custom-scrollbar space-y-6 md:space-y-8 pb-24">
+      {/* Header & Dropdown */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white/5 p-5 md:p-6 rounded-2xl border border-white/10 gap-5 shadow-lg">
         <div>
-          <h2 className="text-2xl font-black text-white">Customer Orders & Bookings</h2>
-          <p className="text-sm text-gray-400">View and manage requests from your customers.</p>
+          <h2 className="text-xl md:text-2xl font-black text-white">Customer Orders & Bookings</h2>
+          <p className="text-xs md:text-sm text-gray-400 mt-1">Manage incoming orders for your published landing pages.</p>
+        </div>
+        <div className="flex items-center gap-3 w-full lg:w-auto bg-black/50 p-2 rounded-xl border border-white/10">
+          <label className="text-sm font-bold text-gray-400 whitespace-nowrap pl-2">Filter by Page:</label>
+          <select
+            value={selectedProjectId}
+            onChange={(e) => setSelectedProjectId(e.target.value)}
+            className="w-full bg-black border border-white/20 rounded-lg px-4 py-2 text-white outline-none cursor-pointer focus:border-cyan-500 text-sm"
+          >
+            {savedPages.map(p => <option key={p.id} value={p.id}>{p.setup?.name || 'Untitled Project'}</option>)}
+          </select>
         </div>
       </div>
 
-      <div className="grid gap-4">
+      {/* Orders List */}
+      <div className="space-y-4">
         {requests.map(req => (
-          <div key={req.id} className="bg-black/40 border border-white/10 p-6 rounded-xl flex justify-between items-center">
-            <div>
-              <p className="text-cyan-400 font-bold uppercase text-xs">{req.request_type}</p>
-              <h4 className="text-white font-bold text-lg">{req.payload?.item || 'Service Request'}</h4>
-              <p className="text-gray-400 text-sm">Customer: {req.customer_email} | Price: ${req.payload?.price || '0'}</p>
+          <div key={req.id} className="bg-black/40 p-5 md:p-6 rounded-xl border border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-cyan-500/30 transition-colors">
+            <div className="w-full md:w-auto">
+              <p className="text-cyan-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">
+                {req.request_type} • {req.payload?.item || 'Item'}
+              </p>
+              <h4 className="text-white font-bold text-lg">{req.payload?.customer_name || 'Customer'}</h4>
+              <p className="text-gray-400 text-sm mt-1">📧 {req.customer_email}</p>
+              <p className="text-gray-400 text-sm">📞 {req.phone_number}</p>
+              <p className="text-gray-500 text-xs mt-2 bg-black/50 p-2 rounded border border-white/5">📍 {req.delivery_address}</p>
             </div>
 
-            <select
-              value={req.status}
-              onChange={(e) => updateStatus(req.id, e.target.value)}
-              className="bg-black border border-white/20 p-2 rounded text-sm text-white"
-            >
-              <option value="Pending">Pending</option>
-              <option value="Processing">Processing</option>
-              <option value="Completed">Ready/Delivered</option>
-            </select>
+            <div className="w-full md:w-auto flex flex-col items-end gap-2">
+              <div className="text-xl font-black text-green-400">${req.payload?.price || '0.00'}</div>
+              <select
+                value={req.status}
+                onChange={(e) => updateStatus(req.id, e.target.value)}
+                className={`w-full md:w-auto bg-black text-white px-4 py-2 rounded-lg border border-white/20 outline-none focus:border-cyan-500 font-bold text-sm transition-colors ${req.status === 'Completed' ? 'text-green-400 border-green-500/30' : ''}`}
+              >
+                <option value="Pending">Pending</option>
+                <option value="Processing">Processing</option>
+                <option value="Completed">Shipped / Completed</option>
+              </select>
+            </div>
           </div>
         ))}
-        {requests.length === 0 && <p className="text-gray-500 text-center py-10">No requests yet.</p>}
+
+        {requests.length === 0 && (
+          <div className="p-8 text-center bg-black/20 rounded-2xl border border-white/5 border-dashed">
+            <h3 className="text-xl font-bold text-gray-500 mb-2">No orders found</h3>
+            <p className="text-gray-600 text-sm">Select a different project from the dropdown above, or wait for new customers to buy.</p>
+          </div>
+        )}
       </div>
     </div>
   );
 };
+
+
 export default function Dashboard() {
   const { currentUser } = useAuth();
   const [userTier, setUserTier] = useState('free');
@@ -274,23 +301,31 @@ export default function Dashboard() {
     fetchUserData();
   }, [currentUser]);
 
+  // 🚀 2. FIXED PRO UPGRADE FUNCTION
   const handleBuyPro = async () => {
     if (!currentUser) return alert("Please log in to upgrade.");
-    try {
-      const response = await fetch('/api/payment/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: currentUser.id, plan: 'pro' })
-      });
 
-      if (response.ok) {
-        alert("🎉 Successfully Upgraded to PRO!");
-        setUserTier('pro');
-      } else {
-        alert("Server failed to update database.");
-      }
+    try {
+      const { error } = await supabase
+        .from('client_requests')
+        .insert([
+          {
+            user_id: currentUser.id,
+            site_name: '3d-universe-platform',
+            request_type: 'Pro Upgrade',
+            customer_email: currentUser.email,
+            status: 'Pending',
+            payload: { item: 'Pro User Upgrade', price: 15 }
+          }
+        ]);
+
+      if (error) throw error;
+
+      alert("🎉 Upgrade request sent! An admin will approve your PRO status shortly.");
+      setUserTier('pro'); // Instantly updates UI so you can test PRO features
+
     } catch (error) {
-      alert("Payment gateway connection failed. Is Port 5001 running?");
+      alert("Failed to process upgrade: " + error.message);
     }
   };
 
