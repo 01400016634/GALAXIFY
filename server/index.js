@@ -61,6 +61,7 @@ const portfolioSchema = new mongoose.Schema({
 const Portfolio = mongoose.model('Portfolio', portfolioSchema);
 
 const settingSchema = new mongoose.Schema({
+  type: { type: String, default: 'global_settings' },
   siteName: { type: String, default: '3D UNIVERSE' },
   heroTagline: { type: String, default: 'Build immersive web experiences' },
   siteLogo: { type: String, default: '' }, // Logo URL/Base64
@@ -93,6 +94,13 @@ const workflowSchema = new mongoose.Schema({
 });
 const Workflow = mongoose.model('Workflow', workflowSchema);
 
+const transactionSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  amount: { type: Number, required: true },
+  date: { type: Date, default: Date.now },
+  description: String
+});
+const Transaction = mongoose.model('Transaction', transactionSchema);
 // ==========================================
 // 🤝 SYNC ROUTES
 // ==========================================
@@ -112,18 +120,18 @@ app.post('/api/owner/sync-user', async (req, res) => {
 });
 
 // ==========================================
-// 🌍 PUBLIC ROUTES
-// ==========================================
+// 🌍 PUBLIC ROUTES UPDATE THE GET ROUTE
 app.get('/api/public/home', async (req, res) => {
   try {
-    let settings = await Setting.findOne();
-    if (!settings) settings = await Setting.create({});
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    // Lock to the specific type 'global_settings'
+    let settings = await Setting.findOne({ type: 'global_settings' });
+    if (!settings) settings = await Setting.create({ type: 'global_settings' });
     res.status(200).json({ settings });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch public data' });
   }
 });
-
 // ==========================================
 // 👤 USER PORTFOLIO ROUTES
 // ==========================================
@@ -169,37 +177,49 @@ app.post('/api/owner/login', (req, res) => {
 app.get('/api/owner/dashboard', async (req, res) => {
   try {
     const users = await User.find().sort({ createdAt: -1 });
-    const projects = await Portfolio.find().sort({ createdAt: -1 });
-    let settings = await Setting.findOne();
-    if (!settings) settings = await Setting.create({});
+    const projects = await Portfolio.find();
+
+    // Calculate total revenue using aggregation
+    const revenueResult = await Transaction.aggregate([
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+    const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
 
     res.status(200).json({
       metrics: {
         totalUsers: users.length,
         premiumUsers: users.filter(u => u.plan !== 'free').length,
+        totalRevenue: totalRevenue, // Send this real value to frontend
         activeThemesCount: 15
       },
-      users, settings, projects
+      users, projects
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// 🚀 SAVES SETTINGS, LOGO, AND HOMEPAGE SECTIONS
-// server/index.js -> Locate this route and update the body
+// UPDATE THE PUT ROUTE
 app.put('/api/owner/settings', async (req, res) => {
   const { settings } = req.body;
+
+  if (!settings) {
+    return res.status(400).json({ error: "No settings data received" });
+  }
+
   try {
-    // We use $set to update only the fields sent in the object
+    console.log("Attempting to update settings:", settings); // 🚀 DEBUG LOG
+
     const updatedSettings = await Setting.findOneAndUpdate(
-      {},
+      { type: 'global_settings' },
       { $set: settings },
-      { new: true, upsert: true }
+      { new: true, upsert: true, runValidators: true } // runValidators helps catch issues early
     );
-    res.status(200).json({ message: 'Settings saved', settings: updatedSettings });
+
+    res.status(200).json({ success: true, settings: updatedSettings });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update settings' });
+    console.error("SERVER SAVE ERROR:", error); // 🚀 THIS WILL SHOW YOU THE TRUTH
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -213,21 +233,56 @@ app.delete('/api/owner/users/:id', async (req, res) => {
   res.status(200).json({ message: 'User deleted' });
 });
 
-app.delete('/api/owner/projects/:id', async (req, res) => {
-  await Portfolio.findByIdAndDelete(req.params.id);
-  res.status(200).json({ message: 'Project deleted' });
-});
+// DELETE A USER PROJECT
+app.delete('/api/user/project/:id', async (req, res) => {
+  const { id } = req.params;
 
-app.post('/api/owner/upload-theme', uploadTheme.single('themeFile'), (req, res) => {
-  res.status(200).json({ message: "Theme uploaded!" });
-});
+  try {
+    console.log("Attempting to delete ID:", id);
 
+    let result = null;
+
+    // 1. Only attempt findByIdAndDelete if the ID is a valid 24-character hex string
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      result = await Portfolio.findByIdAndDelete(id);
+    }
+
+    // 2. If result is still null, try finding by other fields (e.g., if you had an 'id' string)
+    // Note: Your schema doesn't have an 'id' field, so this will only work 
+    // if you added that field to your schema definition.
+    if (!result) {
+      result = await Portfolio.findOneAndDelete({ id: id });
+    }
+
+    if (!result) {
+      console.log("No project found for ID:", id);
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    res.status(200).json({ message: 'Project deleted successfully' });
+  } catch (error) {
+    console.error("Delete Error:", error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+});
 // Workflow routes
 app.put('/api/owner/workflow', async (req, res) => {
   try {
     const { workflowConfig } = req.body;
     await Workflow.findOneAndUpdate({ type: 'master_workflow' }, { phases: workflowConfig }, { upsert: true });
     res.status(200).json({ message: 'Workflow updated' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+app.post('/api/owner/log-transaction', async (req, res) => {
+  const { uid, amount, description } = req.body;
+  try {
+    const user = await User.findOne({ uid });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    await Transaction.create({ userId: user._id, amount, description });
+    res.status(200).json({ message: 'Transaction logged' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

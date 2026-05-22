@@ -2,16 +2,16 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
-// 1. IMPORT YOUR HOME PAGE
+// IMPORT YOUR PAGES
 import Home from './pages/Home';
-
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AuthCallback from './pages/AuthCallback';
 import PortfolioView from './pages/PortfolioView';
 import OwnerLogin from './pages/OwnerLogin';
 import OwnerCMS from './pages/OwnerCMS';
-
+import ClientLogin from './pages/ClientLogin';
+import CustomerDashboard from './pages/CustomerDashboard';
 // This is for normal users (Dashboard)
 const ProtectedRoute = ({ children }) => {
   const { currentUser, loading } = useAuth();
@@ -28,8 +28,6 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
-  // 🚀 MOVED THIS HERE: Now the App function can actually see it!
-  // I also changed it back to 'adminToken' to match your OwnerLogin.jsx file.
   const hasOwnerAccess = !!localStorage.getItem('adminToken');
 
   return (
@@ -39,14 +37,20 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/customer-dashboard/:username" element={<CustomerDashboard />} />
+          {/* Public Live Site */}
           <Route path="/3DUNIVERSE/:username" element={<PortfolioView />} />
 
-          {/* 🚀 DELETED THE DUPLICATE! Now there is only one secure /admin door */}
+          {/* 🚀 NEW: The Customer Portal Authentication Route */}
+          <Route path="/client-portal/:username" element={<ClientLogin />} />
+
+          {/* Secure Admin Door */}
           <Route
             path="/admin"
             element={hasOwnerAccess ? <OwnerCMS /> : <OwnerLogin />}
           />
 
+          {/* Protected Creator Dashboard */}
           <Route
             path="/dashboard"
             element={

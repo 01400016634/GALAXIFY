@@ -2,13 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Users, Palette, Megaphone,
-  CreditCard, Settings, ShieldAlert, LogOut,
+  CreditCard, Settings, ShieldAlert, ShieldCheck, LogOut,
   Activity, Search, MoreVertical, UploadCloud,
   Edit, Trash2, DollarSign, TrendingUp, Eye, Image as ImageIcon,
-  Globe, Layout, Video, Layers, PlusCircle, ListPlus, Type, Save, CheckCircle2,
-  X
+  Globe, Layout, Video, Layers, PlusCircle, ListPlus, Type, Save,
+  CheckCircle2, User, Menu, Crown, X
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+const CountUp = ({ target, duration = 2000 }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+  useEffect(() => {
+    let start = 0;
+    const animate = (timestamp) => {
+      if (!start) start = timestamp;
+      const progress = Math.min((timestamp - start) / duration, 1);
+      setDisplayValue(Math.floor(progress * target));
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+  }, [target]);
+  return <>{displayValue.toLocaleString()}</>;
+};
 
 const OwnerCMS = () => {
   const [activeTab, setActiveTab] = useState('analytics');
@@ -244,12 +259,12 @@ const OwnerCMS = () => {
     setData(prev => ({ ...prev, workflowConfig: newConfig }));
   };
 
+  // ... (Workflow Add/Edit Handlers remain the same)
   const handleAddPhase = () => {
     const phaseName = prompt("Enter new Phase name (e.g., Phase 5: Post-Launch):");
     if (!phaseName) return;
     setWorkflowConfig([...data.workflowConfig, { phase: phaseName, steps: [] }]);
   };
-
   const handleEditPhase = (pIndex) => {
     const newName = prompt("Edit Phase name:", data.workflowConfig[pIndex].phase);
     if (!newName) return;
@@ -257,7 +272,6 @@ const OwnerCMS = () => {
     newConfig[pIndex].phase = newName;
     setWorkflowConfig(newConfig);
   };
-
   const handleAddStep = (pIndex) => {
     const stepTitle = prompt("Enter Step title (e.g., Email Automation):");
     if (!stepTitle) return;
@@ -265,7 +279,6 @@ const OwnerCMS = () => {
     newConfig[pIndex].steps.push({ id: `step_${Date.now()}`, title: stepTitle, description: 'New custom step.', fields: [] });
     setWorkflowConfig(newConfig);
   };
-
   const handleEditStep = (pIndex, sIndex) => {
     const stepTitle = prompt("Edit Step title:", data.workflowConfig[pIndex].steps[sIndex].title);
     if (!stepTitle) return;
@@ -273,14 +286,12 @@ const OwnerCMS = () => {
     newConfig[pIndex].steps[sIndex].title = stepTitle;
     setWorkflowConfig(newConfig);
   };
-
   const handleDeleteStep = (pIndex, sIndex) => {
     if (!window.confirm("Are you sure you want to delete this Step?")) return;
     const newConfig = [...data.workflowConfig];
     newConfig[pIndex].steps.splice(sIndex, 1);
     setWorkflowConfig(newConfig);
   };
-
   const handleAddField = (pIndex, sIndex) => {
     const fieldName = prompt("Enter new Input Field name (e.g., Facebook Pixel ID):");
     if (!fieldName) return;
@@ -288,14 +299,12 @@ const OwnerCMS = () => {
     newConfig[pIndex].steps[sIndex].fields.push(fieldName);
     setWorkflowConfig(newConfig);
   };
-
   const handleDeleteField = (pIndex, sIndex, fIndex) => {
     if (!window.confirm("Remove this field from the User Dashboard?")) return;
     const newConfig = [...data.workflowConfig];
     newConfig[pIndex].steps[sIndex].fields.splice(fIndex, 1);
     setWorkflowConfig(newConfig);
   };
-
   const handleSaveWorkflowToDB = async () => {
     try {
       await fetch('http://localhost:5001/api/owner/workflow', {
@@ -322,6 +331,20 @@ const OwnerCMS = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setData(prev => ({ ...prev, settings: { ...prev.settings, siteLogo: reader.result } }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // 🔥 NEW FIX: Function to handle Image Uploads inside the Modal
+  const handleItemImageUpload = (e, index) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const newData = [...tempContentData];
+        newData[index].image = reader.result; // Saves base64 string to the specific item
+        setTempContentData(newData);
       };
       reader.readAsDataURL(file);
     }
@@ -367,7 +390,6 @@ const OwnerCMS = () => {
       }
     }));
     setEditingSection(null);
-    // Auto-save global settings after closing the modal so changes sync immediately
     setTimeout(() => handleSaveSettings(), 500);
   };
 
@@ -389,6 +411,7 @@ const OwnerCMS = () => {
     </div>
   );
 
+  // COMPUTED VARIABLES (Moved outside of JSX to prevent compilation crashes)
   const validPublishedProjects = data.projects?.filter(p => p.status === 'Published' || p.publicUrl || p.public_url || p.site_name || p.page_data?.status === 'Published') || [];
 
   const groupedProjects = validPublishedProjects.reduce((acc, project) => {
@@ -397,6 +420,19 @@ const OwnerCMS = () => {
     acc[ownerName].push(project);
     return acc;
   }, {});
+
+  const totalUsers = data.users?.length || 0;
+  const proUsers = data.users?.filter(u => u.plan === 'pro' || u.plan === 'premium').length || 0;
+  const freeUsers = totalUsers - proUsers;
+  const totalRevenue = proUsers * 15;
+  const totalThemes = typeof MASTER_THEMES !== 'undefined' ? MASTER_THEMES.length : 15;
+  const activeThemes = data.metrics?.activeThemesCount || 0;
+
+  const safeEditingSection = editingSection || '';
+  const isFaq = safeEditingSection.toLowerCase() === 'faq' || safeEditingSection.toLowerCase() === 'faqs';
+  const isPricing = safeEditingSection.toLowerCase() === 'pricing';
+  const label1 = isFaq ? 'Question' : isPricing ? 'Plan Name' : 'Title';
+  const label2 = isFaq ? 'Answer' : isPricing ? 'Price & Details' : 'Description';
 
   return (
     <div className="min-h-screen w-full bg-[#030303] text-slate-200 flex font-sans overflow-hidden selection:bg-[#ff003c]/30">
@@ -454,38 +490,116 @@ const OwnerCMS = () => {
 
             {/* 📊 ANALYTICS MODULE */}
             {activeTab === 'analytics' && (
-              <motion.div key="analytics" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
-
-                <div className="grid grid-cols-4 gap-6">
-                  {[
-                    { title: "Total Users", value: data.metrics?.totalUsers || 0, icon: <Users size={20} />, color: "text-blue-400" },
-                    { title: "Premium Subs", value: data.metrics?.premiumUsers || 0, icon: <CreditCard size={20} />, color: "text-[#ff003c]" },
-                    {
-                      title: "Active Themes",
-                      value: `${data.metrics?.activeThemesCount || MASTER_THEMES.length} / ${MASTER_THEMES.length}`,
-                      icon: <Palette size={20} />,
-                      color: "text-purple-400",
-                      subtext: `Most Used: ${data.metrics?.mostUsedTheme || 'Cyber Neon Mall'}`
-                    },
-                    { title: "Estimated Revenue", value: `$${(data.metrics?.premiumUsers || 0) * 15}`, icon: <DollarSign size={20} />, color: "text-green-400" }
-                  ].map((stat, i) => (
-                    <div key={i} className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden group hover:border-[#ff003c]/50 transition-colors">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className={`p-3 rounded-xl bg-white/5 ${stat.color}`}>{stat.icon}</div>
-                        <TrendingUp size={16} className="text-green-500" />
-                      </div>
-                      <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest">{stat.title}</h3>
-                      <p className="text-3xl font-bold text-white mt-1">{stat.value}</p>
-                      {stat.subtext && <p className="text-[10px] text-[#ff003c] mt-3 font-mono tracking-widest uppercase">{stat.subtext}</p>}
-                    </div>
-                  ))}
+              <motion.div
+                key="analytics"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-8 font-sans"
+              >
+                {/* 🚀 HEADER: Command Center */}
+                <div className="flex justify-between items-center bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-white/10 shadow-[0_0_40px_rgba(255,0,60,0.05)] relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#ff003c] via-blue-500 to-transparent"></div>
+                  <div>
+                    <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500 flex items-center gap-3">
+                      <ShieldCheck size={28} className="text-[#ff003c]" /> Owner Command Center
+                    </h2>
+                    <p className="text-gray-400 mt-1 font-mono text-sm tracking-widest uppercase">System Analytics & Live Telemetry</p>
+                  </div>
+                  <div className="flex items-center gap-3 bg-green-500/10 border border-green-500/20 px-4 py-2 rounded-full">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-ping"></div>
+                    <span className="text-green-400 font-bold text-sm tracking-widest uppercase">System Online</span>
+                  </div>
                 </div>
 
-                {/* LIVE ANALYTICS GRAPH */}
-                <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl w-full">
-                  <h3 className="text-white font-bold text-lg mb-6 flex items-center gap-2">
-                    <Activity className="text-[#ff003c]" /> Live System Performance (7 Days)
-                  </h3>
+                {/* 🚀 TOP ROW: Real Motion Circle Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  {/* Metric 1: Total Revenue (Green Rings) */}
+                  <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center relative overflow-hidden group hover:border-green-500/50 transition-colors">
+                    <h3 className="text-gray-400 font-bold tracking-widest uppercase text-xs mb-6 z-10">Estimated Revenue</h3>
+                    <div className="relative w-40 h-40 flex items-center justify-center">
+                      <div className="absolute inset-0 rounded-full border-t-2 border-l-2 border-green-500/30 animate-[spin_4s_linear_infinite]"></div>
+                      <div className="absolute inset-2 rounded-full border-b-2 border-r-2 border-green-400/40 animate-[spin_3s_linear_infinite_reverse]"></div>
+                      <div className="relative z-10 flex flex-col items-center">
+                        <DollarSign size={24} className="text-green-400 mb-1" />
+                        <span className="text-3xl font-black text-white">
+                          $<CountUp target={totalRevenue} />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Metric 2: Total Users (Blue Rings) */}
+                  <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center relative overflow-hidden group hover:border-blue-500/50 transition-colors">
+                    <h3 className="text-gray-400 font-bold tracking-widest uppercase text-xs mb-6 z-10">Total Users</h3>
+                    <div className="relative w-40 h-40 flex items-center justify-center">
+                      <div className="absolute inset-0 rounded-full border-t-2 border-r-2 border-blue-500/40 animate-[spin_3s_linear_infinite]"></div>
+                      <div className="relative z-10 flex flex-col items-center">
+                        <Users size={24} className="text-blue-400 mb-1" />
+                        <span className="text-3xl font-black text-white"><CountUp target={totalUsers} /></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Metric 3: Active Themes */}
+                  <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center relative overflow-hidden group hover:border-[#ff003c]/50 transition-colors">
+                    <h3 className="text-gray-400 font-bold tracking-widest uppercase text-xs mb-6 z-10">Active Themes</h3>
+                    <div className="relative w-40 h-40 flex items-center justify-center">
+                      <div className="absolute inset-0 rounded-full border-2 border-dashed border-[#ff003c]/30 animate-[spin_8s_linear_infinite]"></div>
+                      <div className="relative z-10 flex flex-col items-center">
+                        <Palette size={24} className="text-[#ff003c] mb-1" />
+                        <span className="text-2xl font-black text-white">{activeThemes} / {totalThemes}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 🚀 MIDDLE ROW: Database Splits (Free vs Pro) */}
+                <div className="grid grid-cols-1 gap-8">
+                  <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl">
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-lg font-bold text-white flex items-center gap-2"><Layers size={18} className="text-blue-400" /> User Database Tier Split</h3>
+                      <span className="text-xs bg-white/10 px-3 py-1 rounded-full font-mono text-gray-300">Total: {totalUsers.toLocaleString()}</span>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Interactive Progress Bar */}
+                      <div className="h-4 w-full bg-black rounded-full overflow-hidden flex border border-white/5">
+                        <div className="h-full bg-gray-600 transition-all duration-1000" style={{ width: `${totalUsers > 0 ? (freeUsers / totalUsers) * 100 : 0}%` }}></div>
+                        <div className="h-full bg-gradient-to-r from-[#ff003c] to-pink-500 relative transition-all duration-1000" style={{ width: `${totalUsers > 0 ? (proUsers / totalUsers) * 100 : 0}%` }}>
+                          <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-center pt-2">
+                        <div className="bg-white/5 p-4 rounded-xl border border-white/5 hover:bg-white/10 transition-colors">
+                          <span className="text-xs text-gray-500 uppercase tracking-widest block mb-1">Free Tier</span>
+                          <span className="text-2xl font-bold text-gray-300">{freeUsers.toLocaleString()}</span>
+                        </div>
+                        <div className="bg-[#ff003c]/10 p-4 rounded-xl border border-[#ff003c]/20 hover:bg-[#ff003c]/20 transition-colors">
+                          <span className="text-xs text-[#ff003c] uppercase tracking-widest block mb-1 flex items-center justify-center gap-1"><CreditCard size={12} /> Premium Subs</span>
+                          <span className="text-2xl font-black text-[#ff003c]">{proUsers.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 🚀 BOTTOM ROW: LIVE ANALYTICS GRAPH */}
+                <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl w-full">
+                  <div className="flex justify-between items-end mb-6">
+                    <div>
+                      <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                        <Activity className="text-[#ff003c]" /> Live System Performance (7 Days)
+                      </h3>
+                      <p className="text-sm text-gray-500 font-mono">Revenue and user acquisition matrix.</p>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#ff003c]"></div><span className="text-xs text-gray-400 uppercase font-bold">Revenue</span></div>
+                      <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-blue-500"></div><span className="text-xs text-gray-400 uppercase font-bold">Users</span></div>
+                    </div>
+                  </div>
+
                   <div className="h-[350px] w-full" key="analytics-chart">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={data.revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -500,12 +614,12 @@ const OwnerCMS = () => {
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                        <XAxis dataKey="name" stroke="#ffffff50" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                        <YAxis stroke="#ffffff50" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                        <XAxis dataKey="name" stroke="#ffffff50" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontFamily: 'monospace' }} />
+                        <YAxis stroke="#ffffff50" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontFamily: 'monospace' }} />
                         <Tooltip
-                          contentStyle={{ backgroundColor: '#0a0a0c', border: '1px solid #ffffff20', borderRadius: '12px' }}
+                          contentStyle={{ backgroundColor: '#0a0a0c', border: '1px solid #ffffff20', borderRadius: '12px', backdropFilter: 'blur(10px)' }}
                           itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: 'bold' }}
-                          labelStyle={{ color: '#888', marginBottom: '4px' }}
+                          labelStyle={{ color: '#888', marginBottom: '4px', textTransform: 'uppercase', fontSize: '12px' }}
                         />
                         <Area type="monotone" dataKey="revenue" name="Revenue ($)" stroke="#ff003c" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
                         <Area type="monotone" dataKey="users" name="Active Users" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorUsers)" />
@@ -513,7 +627,6 @@ const OwnerCMS = () => {
                     </ResponsiveContainer>
                   </div>
                 </div>
-
               </motion.div>
             )}
 
@@ -732,7 +845,10 @@ const OwnerCMS = () => {
 
                 <div className="space-y-12">
                   {categories.map((catName) => {
-                    const matchedThemes = MASTER_THEMES.filter(t => t.category === catName);
+                    // 🔥 SYNCHRONIZATION FIX: Merge hardcoded themes with database themes
+                    const allThemes = [...MASTER_THEMES, ...(data.themes || [])];
+                    const matchedThemes = allThemes.filter(t => t.category === catName);
+
                     return (
                       <div key={catName} className="space-y-4">
                         <div className="flex items-center gap-3 border-b border-white/5 pb-2">
@@ -740,14 +856,22 @@ const OwnerCMS = () => {
                           <span className="text-xs font-mono text-slate-500">({matchedThemes.length} Nodes Configured)</span>
                           <div className="flex-1 h-[1px] bg-gradient-to-r from-white/10 to-transparent ml-2" />
                         </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                           {matchedThemes.map((theme) => (
                             <div key={theme.id} className="bg-[#0b0b0d] border border-white/10 rounded-2xl overflow-hidden group flex flex-col justify-between shadow-xl">
+
+                              {/* 🔥 IMAGE RENDERING FIX: Checks for custom image, falls back to palette icon */}
                               <div className={`h-40 ${theme.previewClass} relative flex items-center justify-center border-b border-white/5 overflow-hidden`}>
-                                <Palette size={36} className="text-white/10 group-hover:text-white/30 transition-colors relative z-10" />
+                                {theme.image ? (
+                                  <img src={theme.image} alt={theme.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <Palette size={36} className="text-white/10 group-hover:text-white/30 transition-colors relative z-10" />
+                                )}
                                 <span className="absolute bottom-3 left-3 text-[10px] font-mono text-slate-400 bg-black/60 px-2 py-0.5 rounded border border-white/10">{theme.id}</span>
                                 {theme.premium && <span className="absolute top-3 right-3 bg-[#ff003c]/20 text-[#ff003c] border border-[#ff003c]/50 text-[10px] font-bold px-2 py-1 rounded tracking-wide shadow-md">PRO</span>}
                               </div>
+
                               <div className="p-5 space-y-4">
                                 <div>
                                   <h4 className="text-white font-bold text-lg leading-tight group-hover:text-[#ff003c] transition-colors">{theme.name}</h4>
@@ -802,7 +926,6 @@ const OwnerCMS = () => {
                       />
                     </div>
 
-                    {/* 🚀 BOUND COMMIT BUTTON TO THE NEW SAVE HANDLER */}
                     <button
                       type="button"
                       onClick={handleSaveSettings}
@@ -861,76 +984,89 @@ const OwnerCMS = () => {
                 </div>
               </motion.div>
             )}
+
           </AnimatePresence>
-        </div >
-      </main >
+        </div>
+      </main>
 
       {/* 🚀 GLOBAL CONTENT EDITOR MODAL */}
-      {
-        editingSection && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-[#0a0a0c] border border-[#ff003c]/40 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-              <div className="p-5 border-b border-white/10 flex justify-between items-center bg-white/5">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Edit size={18} className="text-[#ff003c]" /> Editing Content: {editingSection}
-                </h3>
-                <button onClick={() => setEditingSection(null)} className="text-slate-400 hover:text-white"><X size={24} /></button>
-              </div>
+      {editingSection && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0a0a0c] border border-[#ff003c]/40 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-5 border-b border-white/10 flex justify-between items-center bg-white/5">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Edit size={18} className="text-[#ff003c]" /> Editing Content: {editingSection}
+              </h3>
+              <button onClick={() => setEditingSection(null)} className="text-slate-400 hover:text-white"><X size={24} /></button>
+            </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-                {(() => {
-                  const isFaq = editingSection.toLowerCase() === 'faq' || editingSection.toLowerCase() === 'faqs';
-                  const isPricing = editingSection.toLowerCase() === 'pricing';
-                  const label1 = isFaq ? 'Question' : isPricing ? 'Plan Name' : 'Title';
-                  const label2 = isFaq ? 'Answer' : isPricing ? 'Price & Details' : 'Description';
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+              {tempContentData.map((item, idx) => (
+                <div key={item.id || idx} className="bg-white/5 border border-white/10 rounded-xl p-4 relative group">
+                  <button onClick={() => setTempContentData(tempContentData.filter((_, i) => i !== idx))} className="absolute top-4 right-4 text-red-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Trash2 size={16} />
+                  </button>
+                  <div className="space-y-3 pr-8">
+                    {/* Text Inputs */}
+                    <div>
+                      <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">{label1}</label>
+                      <input type="text" value={item.k1 || ''} onChange={(e) => {
+                        const newData = [...tempContentData];
+                        newData[idx].k1 = e.target.value;
+                        setTempContentData(newData);
+                      }} className="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#ff003c]" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">{label2}</label>
+                      <textarea rows="2" value={item.k2 || ''} onChange={(e) => {
+                        const newData = [...tempContentData];
+                        newData[idx].k2 = e.target.value;
+                        setTempContentData(newData);
+                      }} className="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#ff003c] resize-none" />
+                    </div>
 
-                  return (
-                    <>
-                      {tempContentData.map((item, idx) => (
-                        <div key={item.id || idx} className="bg-white/5 border border-white/10 rounded-xl p-4 relative group">
-                          <button onClick={() => setTempContentData(tempContentData.filter((_, i) => i !== idx))} className="absolute top-4 right-4 text-red-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Trash2 size={16} />
-                          </button>
-                          <div className="space-y-3 pr-8">
-                            <div>
-                              <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">{label1}</label>
-                              <input type="text" value={item.k1 || ''} onChange={(e) => {
-                                const newData = [...tempContentData];
-                                newData[idx].k1 = e.target.value;
-                                setTempContentData(newData);
-                              }} className="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#ff003c]" />
-                            </div>
-                            <div>
-                              <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">{label2}</label>
-                              <textarea rows="2" value={item.k2 || ''} onChange={(e) => {
-                                const newData = [...tempContentData];
-                                newData[idx].k2 = e.target.value;
-                                setTempContentData(newData);
-                              }} className="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#ff003c] resize-none" />
-                            </div>
+                    {/* 🔥 NEW FEATURE: ITEM IMAGE UPLOADER */}
+                    <div className="mt-3">
+                      <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Slide Image / Photo</label>
+                      <div className="flex items-center gap-4 bg-black/50 border border-white/10 p-3 rounded-lg">
+                        {item.image ? (
+                          <div className="w-16 h-16 rounded bg-black/80 flex items-center justify-center overflow-hidden shrink-0 border border-white/10">
+                            <img src={item.image} alt="Slide Preview" className="w-full h-full object-cover" />
                           </div>
+                        ) : (
+                          <div className="w-16 h-16 rounded bg-black/80 flex items-center justify-center shrink-0 border border-white/10 border-dashed text-slate-600">
+                            <ImageIcon size={20} />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <input
+                            type="file"
+                            accept="image/png, image/jpeg, image/webp"
+                            onChange={(e) => handleItemImageUpload(e, idx)}
+                            className="text-xs text-white file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-bold file:bg-[#ff003c]/10 file:text-[#ff003c] hover:file:bg-[#ff003c]/20 cursor-pointer w-full"
+                          />
                         </div>
-                      ))}
-                      <button onClick={() => setTempContentData([...tempContentData, { id: Date.now(), k1: '', k2: '' }])} className="w-full py-3 rounded-xl border border-dashed border-white/20 text-slate-400 font-bold hover:text-white hover:border-[#ff003c] hover:bg-[#ff003c]/10 transition-colors flex items-center justify-center gap-2 text-sm">
-                        <PlusCircle size={16} /> Add New Item to {editingSection}
-                      </button>
-                    </>
-                  );
-                })()}
-              </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <button onClick={() => setTempContentData([...tempContentData, { id: Date.now(), k1: '', k2: '', image: '' }])} className="w-full py-3 rounded-xl border border-dashed border-white/20 text-slate-400 font-bold hover:text-white hover:border-[#ff003c] hover:bg-[#ff003c]/10 transition-colors flex items-center justify-center gap-2 text-sm">
+                <PlusCircle size={16} /> Add New Item to {editingSection}
+              </button>
+            </div>
 
-              <div className="p-5 border-t border-white/10 bg-white/5 flex justify-end gap-3">
-                <button onClick={() => setEditingSection(null)} className="px-5 py-2 rounded-xl font-bold text-slate-400 hover:text-white transition-colors">Cancel</button>
-                <button onClick={saveContentEdits} className="px-6 py-2 bg-[#ff003c] text-white font-bold rounded-xl shadow-[0_0_15px_rgba(255,0,60,0.4)] flex items-center gap-2 hover:scale-[1.02] transition-transform">
-                  <Save size={16} /> Save Changes
-                </button>
-              </div>
+            <div className="p-5 border-t border-white/10 bg-white/5 flex justify-end gap-3">
+              <button onClick={() => setEditingSection(null)} className="px-5 py-2 rounded-xl font-bold text-slate-400 hover:text-white transition-colors">Cancel</button>
+              <button onClick={saveContentEdits} className="px-6 py-2 bg-[#ff003c] text-white font-bold rounded-xl shadow-[0_0_15px_rgba(255,0,60,0.4)] flex items-center gap-2 hover:scale-[1.02] transition-transform">
+                <Save size={16} /> Save Changes
+              </button>
             </div>
           </div>
-        )
-      }
+        </div>
+      )}
 
-    </div >
+    </div>
   );
 };
 

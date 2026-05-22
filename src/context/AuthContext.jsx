@@ -51,7 +51,6 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  // 🚀 THIS IS THE MISSING FUNCTION THAT CAUSED THE CRASH
   const loginWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -67,9 +66,51 @@ export function AuthProvider({ children }) {
     window.location.href = '/login';
   };
 
+  // 🚀 NEW: Supabase Email & Password Signup
+  const signupWithEmail = async (email, password) => {
+    const { data, error } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        // This tells Supabase where to send the user after they click the email link
+        emailRedirectTo: `${window.location.origin}/dashboard`
+      }
+    });
+
+    if (error) throw error;
+
+    // data.user.identities will be empty if they haven't verified yet
+    return data;
+  };
+  // 🚀 NEW: Supabase Email & Password Login
+  const loginWithEmail = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  // 🚀 NEW: Supabase Password Reset
+  const resetPassword = async (email) => {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`, // Where they go after clicking the email link
+    });
+    if (error) throw error;
+    return data;
+  };
+
   return (
-    // Line 80: It is now safely exporting the function defined above
-    <AuthContext.Provider value={{ currentUser, loading, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{
+      currentUser,
+      loading,
+      loginWithGoogle,
+      signupWithEmail,  // <-- Exported for Login.jsx
+      loginWithEmail,   // <-- Exported for Login.jsx
+      resetPassword,    // <-- Exported for Login.jsx
+      logout
+    }}>
       {children}
     </AuthContext.Provider>
   );

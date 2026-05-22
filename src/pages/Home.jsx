@@ -1,4 +1,4 @@
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
 import { useAuth } from '../context/AuthContext';
@@ -11,7 +11,7 @@ import {
   CheckCircle2, ChevronDown, Target, Layers, Zap, LayoutTemplate, ArrowRight,
   Database, ShieldCheck, ShoppingBag, Cpu, Home as HomeIcon, BookOpen, Briefcase,
   Wand2, Fingerprint, ImageIcon, Video, Box, Star, Send, Sliders, MessageSquare,
-  User, Palette, Activity, Eye, Menu, Crown
+  User, Palette, Activity, Eye, Menu, Crown,ShieldAlert
 } from 'lucide-react';
 
 // 🚀 GLOBAL CONFIGURATION CONSTANTS
@@ -50,7 +50,7 @@ const ALL_15_THEMES = [
   { id: 'theme-15', name: 'Dark Matter', track: 'Agency & Service', style: 'Extreme Void Scaling', bg: 'from-purple-900/50 via-neutral-950 to-black', pro: true, element: 'physics-cloud' }
 ];
 
-const FAQS = [
+const DEFAULT_FAQS = [
   { q: "Do I need prior 3D modeling or development experience?", a: "No coding or design skills are needed. The engine reads your text directly from the dashboard forms and auto-configures all spatial placements." },
   { q: "Can I connect my own custom brand domain?", a: "Yes. Pro users can instantly point their landing pages to any custom domain to ensure complete brand ownership." },
   { q: "Can I edit the content of my landing page after publishing?", a: "Yes. Your user dashboard serves as a continuous management console. Any text or configuration changes save automatically and sync instantly to the public URL." },
@@ -62,12 +62,56 @@ const Home = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
+  // 🚀 LIVE DYNAMIC SETTINGS FROM DATABASE
+  const [siteSettings, setSiteSettings] = useState({
+    siteName: '3D UNIVERSE',
+    heroTagline: 'Build Cinematic 3D Websites. Zero Code Required.',
+    siteLogo: '',
+    maintenanceMode: false,
+    sectionContent: {}
+  });
+
+  // 🚀 FETCH SETTINGS ON LOAD
+  useEffect(() => {
+    fetch('http://localhost:5001/api/public/home')
+      .then(res => res.json())
+      .then(data => {
+        if (data.settings) {
+          setSiteSettings(data.settings);
+        }
+      })
+      .catch(err => console.error("Error fetching live settings:", err));
+  }, []);
+
   // Dynamic review pipeline state matrix
   const [reviews, setReviews] = useState([
     { name: "Founder & Lead Architect", role: "Design Nexus System", review: "The seamless combination of automated backend synchronization and premium spatial rendering allowed us to deploy our product platform with incredible speed. Dwell times have increased significantly.", stars: 5 },
     { name: "E-Commerce Brand Manager", role: "Velo Retail Global", review: "Moving our product displays into an interactive environment completely transformed our conversion metrics. Our audience loves the fluid interaction.", stars: 5 }
   ]);
   const [newReview, setNewReview] = useState({ name: '', role: '', review: '', stars: 5 });
+  // 🚀 MAINTENANCE MODE CHECK (Inside Home.jsx)
+  if (siteSettings.maintenanceMode) {
+    return (
+      <div className="h-screen w-full bg-[#040406] text-white flex flex-col items-center justify-center selection:bg-cyan-500/30 relative overflow-hidden px-6 text-center">
+        {/* Abstract Background Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#ff003c] opacity-[0.05] blur-[150px] pointer-events-none" />
+
+        <ShieldAlert size={80} className="text-[#ff003c] mb-8 animate-pulse relative z-10" />
+
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight mb-6 relative z-10">
+          We’re Upgrading <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">The Universe</span>
+        </h1>
+
+        <p className="text-slate-400 text-sm sm:text-base max-w-2xl leading-relaxed font-light relative z-10">
+          Our systems are currently undergoing scheduled maintenance to deliver a faster, smarter, and more immersive experience.
+        </p>
+
+        <div className="mt-8 px-6 py-2 rounded-full border border-white/10 bg-white/5 text-xs font-mono uppercase tracking-widest text-slate-500 relative z-10">
+          We’ll be back online shortly
+        </div>
+      </div>
+    );
+  }
 
   const toggleFaq = (index) => {
     setOpenFaq(openFaq === index ? null : index);
@@ -88,7 +132,7 @@ const Home = () => {
     }
   };
 
-  // 🚀 REDESIGNED LIVE VISUAL PREVIEWS (Larger & More Vibrant)
+  // 🚀 REDESIGNED LIVE VISUAL PREVIEWS
   const renderAbstractVisual = (elementKey) => {
     return (
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden select-none opacity-80">
@@ -111,6 +155,9 @@ const Home = () => {
     );
   };
 
+  // Determine FAQ data (Use CMS data if exists, otherwise fallback to defaults)
+  const activeFaqs = siteSettings.sectionContent?.FAQ?.length > 0 ? siteSettings.sectionContent.FAQ : DEFAULT_FAQS;
+
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden selection:bg-cyan-500/30 text-slate-200 font-sans">
 
@@ -130,7 +177,7 @@ const Home = () => {
         }
       `}</style>
 
-      {/* BACKGROUND: 3D Solar System Canvas (Completely Untouched) */}
+      {/* BACKGROUND: 3D Solar System Canvas */}
       <div className="absolute inset-0 z-0">
         <ErrorBoundary>
           <Canvas camera={{ position: [0, 20, 35], fov: 45 }}>
@@ -145,16 +192,25 @@ const Home = () => {
       <div className="relative z-10 pointer-events-none h-full w-full overflow-y-auto custom-scrollbar transform-gpu">
         <div className="pointer-events-auto flex flex-col min-h-full bg-gradient-to-b from-transparent via-black/40 to-[#040406]">
 
-          {/* NAVIGATION */}
+          {/* 🚀 NAVIGATION (WITH DYNAMIC LOGO & SITE NAME) */}
           <nav className="w-full bg-black/40 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50 shadow-2xl">
             <div className="max-w-[1400px] mx-auto px-6 py-4 flex justify-between items-center">
               <div className="flex items-center gap-3 group cursor-pointer" onClick={() => navigate('/')}>
-
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                  <Sparkles className="text-white animate-pulse" size={20} />
-                </div>
+                {/* 🚀 DYNAMIC LOGO */}
+                {siteSettings.siteLogo ? (
+                  <img
+                    src={siteSettings.siteLogo}
+                    alt="Logo"
+                    className="w-10 h-10 rounded-full object-cover border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                    <Sparkles className="text-white animate-pulse" size={20} />
+                  </div>
+                )}
+                {/* 🚀 DYNAMIC SITE NAME */}
                 <h1 className="text-xl font-black tracking-widest text-white">
-                  3D <span className="text-cyan-400 font-light">UNIVERSE</span>
+                  {siteSettings.siteName || "3D UNIVERSE"}
                 </h1>
               </div>
               <div className="hidden md:flex items-center gap-8 text-xs font-mono uppercase tracking-wider text-slate-400">
@@ -169,15 +225,14 @@ const Home = () => {
             </div>
           </nav>
 
-          {/* 1. HERO SECTION */}
+          {/* 1. HERO SECTION (WITH DYNAMIC TAGLINE) */}
           <section className="pt-28 pb-16 px-6 flex flex-col items-center text-center min-h-[85vh] justify-center max-w-5xl mx-auto relative">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-cyan-500/20 bg-cyan-500/5 text-cyan-400 text-xs font-mono uppercase tracking-widest mb-6 backdrop-blur-md">
               <Sparkles size={12} /> ✦ THE NEXT GENERATION OF THE SPATIAL WEB
             </div>
 
             <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white tracking-tight leading-[1.1] mb-6 drop-shadow-2xl">
-              Build Cinematic 3D Websites. <br />
-              <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 text-transparent bg-clip-text drop-shadow-[0_0_30px_rgba(6,182,212,0.2)]">Zero Code Required.</span>
+              {siteSettings.heroTagline || "Build Cinematic 3D Websites. Zero Code Required."}
             </h1>
 
             <p className="text-sm sm:text-base md:text-lg text-slate-300 max-w-3xl mb-10 leading-relaxed font-normal">
@@ -275,7 +330,6 @@ const Home = () => {
                 </p>
               </div>
 
-              {/* 🚀 UPGRADED: Removed opacity-30, added glassCard blur, and brightened text */}
               <div className={glassCard + " lg:col-span-6 !p-8 select-none relative overflow-hidden group bg-black/40"}>
                 <div className="absolute top-4 left-5 flex gap-1.5">
                   <div className="w-2.5 h-2.5 bg-red-500/50 rounded-full" />
@@ -300,12 +354,11 @@ const Home = () => {
                   </div>
                 </div>
 
-                {/* Decorative scanner line */}
                 <div className="absolute left-0 right-0 top-0 h-[1px] bg-cyan-500/40 animate-[bounce_4s_infinite] shadow-[0_0_15px_#00ffff]" />
               </div>
             </section>
 
-            {/* 7. THE 15 PREMIUM THEMES SHOWCASE (Larger Cards & Vibrant Previews) */}
+            {/* 7. THE 15 PREMIUM THEMES SHOWCASE */}
             <section id="galleries" className="space-y-12 overflow-hidden relative w-full">
               <div className="text-center space-y-3">
                 <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded border border-cyan-500/20 uppercase tracking-widest font-bold">Core Registry</span>
@@ -313,7 +366,6 @@ const Home = () => {
                 <p className="text-slate-400 font-light text-sm sm:text-base max-w-xl mx-auto">Explore our complete core registry of 15 live interactive environment models categorized perfectly by industry matrix.</p>
               </div>
 
-              {/* INFINITE AUTO MARQUEE TRACK */}
               <div className="w-full relative py-6 mask-gradient overflow-hidden">
                 <div className="absolute top-0 bottom-0 left-0 w-24 bg-gradient-to-r from-[#040406] to-transparent z-10 pointer-events-none" />
                 <div className="absolute top-0 bottom-0 right-0 w-24 bg-gradient-to-l from-[#040406] to-transparent z-10 pointer-events-none" />
@@ -321,8 +373,6 @@ const Home = () => {
                 <div className="animate-marquee-stream gap-8">
                   {[...ALL_15_THEMES, ...ALL_15_THEMES].map((theme, idx) => (
                     <div key={idx} className="w-[340px] sm:w-[400px] shrink-0 bg-[#09090b] border border-white/10 rounded-2xl overflow-hidden flex flex-col justify-between shadow-2xl relative group">
-
-                      {/* LARGER PREVIEW BOX WITH VIBRANT RENDER OUTPUT */}
                       <div className="h-48 bg-gradient-to-br from-slate-900 to-black relative flex items-center justify-center border-b border-white/5 overflow-hidden">
                         <div className={`absolute inset-0 bg-gradient-to-br ${theme.bg} opacity-70 group-hover:opacity-100 transition-opacity duration-500`} />
                         {renderAbstractVisual(theme.element)}
@@ -337,7 +387,6 @@ const Home = () => {
                         <h4 className="text-white font-bold text-lg mt-1">{theme.name}</h4>
                         <p className="text-xs text-slate-400 font-light font-mono mt-1.5">{theme.style} target matrix loops active.</p>
                       </div>
-
                     </div>
                   ))}
                 </div>
@@ -408,7 +457,6 @@ const Home = () => {
                 </form>
               </div>
 
-              {/* Live Roller Review Output Stream */}
               <div className="lg:col-span-7 space-y-4 max-h-[380px] overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-1">
                 {reviews.map((rev, idx) => (
                   <div key={idx} className="p-5 bg-black/40 border border-white/5 rounded-xl space-y-3 relative group overflow-hidden transition-all hover:border-white/10 animate-in slide-in-from-top-3 duration-300">
@@ -438,7 +486,6 @@ const Home = () => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-                {/* Starter Free Plan Card */}
                 <div className={glassCard + " flex flex-col justify-between bg-black/40"}>
                   <div className="space-y-2">
                     <h3 className="text-xl font-black tracking-wide text-white">STARTER PLAN</h3>
@@ -456,7 +503,6 @@ const Home = () => {
                   </button>
                 </div>
 
-                {/* Pro Premium Plan Card */}
                 <div className={glassCard + " flex flex-col justify-between relative border-orange-500/40 bg-black/40 shadow-[0_0_30px_rgba(249,115,22,0.05)]"}>
                   <span className="absolute top-0 right-6 -translate-y-1/2 bg-gradient-to-r from-amber-500 to-orange-600 text-black text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-lg font-mono">MOST POPULAR 👑</span>
                   <div className="space-y-2">
@@ -478,25 +524,31 @@ const Home = () => {
               </div>
             </section>
 
-            {/* 12. FAQ SECTION */}
+            {/* 12. 🚀 DYNAMIC FAQ SECTION WITH CMS CONNECTION */}
             <section className="max-w-3xl mx-auto space-y-8">
               <div className="text-center">
                 <h2 className="text-2xl sm:text-4xl font-black text-white">Frequently Asked Questions</h2>
               </div>
               <div className="space-y-3">
-                {FAQS.map((faq, idx) => (
-                  <div key={idx} className="bg-[#09090b] border border-white/5 rounded-xl overflow-hidden transition-all">
-                    <button onClick={() => toggleFaq(idx)} className="w-full p-4 text-left flex justify-between items-center text-white hover:bg-white/[0.01] transition-colors">
-                      <span className="font-bold text-sm sm:text-base flex items-center gap-2"><HelpCircle size={16} className="text-cyan-500" /> {faq.q}</span>
-                      <ChevronDown size={14} className={`text-slate-500 transition-transform duration-300 ${openFaq === idx ? 'rotate-180 text-cyan-400' : ''}`} />
-                    </button>
-                    {openFaq === idx && (
-                      <div className="p-5 text-xs sm:text-sm text-slate-400 leading-relaxed border-t border-white/5 bg-black/20 font-light animate-in fade-in duration-200">
-                        {faq.a}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                {activeFaqs.map((faq, idx) => {
+                  // Safety check in case CMS saved them as k1/k2 instead of q/a
+                  const questionText = faq.q || faq.k1 || "Untitled Question";
+                  const answerText = faq.a || faq.k2 || "No answer provided.";
+
+                  return (
+                    <div key={idx} className="bg-[#09090b] border border-white/5 rounded-xl overflow-hidden transition-all">
+                      <button onClick={() => toggleFaq(idx)} className="w-full p-4 text-left flex justify-between items-center text-white hover:bg-white/[0.01] transition-colors">
+                        <span className="font-bold text-sm sm:text-base flex items-center gap-2"><HelpCircle size={16} className="text-cyan-500 shrink-0" /> {questionText}</span>
+                        <ChevronDown size={14} className={`text-slate-500 transition-transform duration-300 shrink-0 ${openFaq === idx ? 'rotate-180 text-cyan-400' : ''}`} />
+                      </button>
+                      {openFaq === idx && (
+                        <div className="p-5 text-xs sm:text-sm text-slate-400 leading-relaxed border-t border-white/5 bg-black/20 font-light animate-in fade-in duration-200">
+                          {answerText}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </section>
 
@@ -535,10 +587,10 @@ const Home = () => {
 
             <div className="max-w-[1400px] mx-auto pt-8 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px]">
               <div className="flex items-center gap-2 text-gray-400 font-bold tracking-wider">
-                <Globe size={14} className="text-cyan-400" /> 3D UNIVERSE ENGINE SUBSYSTEMS
+                <Globe size={14} className="text-cyan-400" /> {siteSettings.siteName || "3D UNIVERSE"}
               </div>
               <p className="text-center sm:text-right text-gray-600 font-sans">
-                © 2026 3D UNIVERSE. Elevating digital reality globally.
+                © {new Date().getFullYear()} {siteSettings.siteName || "3D UNIVERSE"}. Elevating digital reality globally.
               </p>
             </div>
           </footer>
