@@ -388,14 +388,14 @@ export default function Dashboard() {
         return;
       }
 
-      // 🚀 FIXED: Removed the forced 'id' and added the 'onConflict' rule
+      // 🚀 FIXED: Removed 'id' so Supabase uses the default gen_random_uuid()
       const { error } = await supabase
         .from('landing_pages')
         .upsert({
           user_id: currentUser.id,
-          site_name: cleanUrlSlug, // We use this to check for duplicates
+          site_name: cleanUrlSlug,
           page_data: sanitizedData,
-          // If you get an error here, make sure you actually added a 'public_url' column to your Supabase table!
+          public_url: publicUrl // Ensure this column exists in your table!
         }, { onConflict: 'site_name' });
 
       if (error) throw error;
