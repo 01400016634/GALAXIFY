@@ -751,52 +751,55 @@ export default function Dashboard() {
     const projectInventory = inventory.filter(item => item.projectId === selectedProjectId);
 
     return (
-      <div className="p-8 h-full overflow-y-auto custom-scrollbar space-y-8">
-        <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
+      <div className="p-4 md:p-8 h-full overflow-y-auto custom-scrollbar space-y-6 md:space-y-8 pb-24">
+
+        {/* 🚀 FIXED: Stacked header on mobile */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/5 p-4 md:p-6 rounded-2xl border border-white/10 gap-4">
           <div>
-            <h2 className="text-2xl font-black text-white">E-Commerce Inventory</h2>
-            <p className="text-gray-400">Manage products linked to specific landing pages.</p>
+            <h2 className="text-xl md:text-2xl font-black text-white">E-Commerce Inventory</h2>
+            <p className="text-xs md:text-sm text-gray-400 mt-1">Manage products linked to specific landing pages.</p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-bold text-gray-400">Context:</label>
-              <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className="bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-white outline-none cursor-pointer">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full md:w-auto">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+              <label className="text-xs sm:text-sm font-bold text-gray-400">Context:</label>
+              <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className="w-full sm:w-auto bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white outline-none cursor-pointer text-sm">
                 {savedPages.map(p => <option key={p.id} value={p.id}>{p.setup.name || 'Untitled'}</option>)}
               </select>
             </div>
-            <button className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold flex items-center gap-2">
-              <Plus size={18} /> Add Product
+            <button className="w-full sm:w-auto px-4 md:px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+              <Plus size={16} /> Add Product
             </button>
           </div>
         </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-          <table className="w-full text-left text-sm text-gray-400">
-            <thead className="text-xs uppercase bg-black/50 text-gray-500 border-b border-white/10">
+        {/* 🚀 FIXED: Added overflow-x-auto so the table swipes on mobile instead of breaking! */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden overflow-x-auto">
+          <table className="w-full text-left text-sm text-gray-400 min-w-[600px]">
+            <thead className="text-[10px] md:text-xs uppercase bg-black/50 text-gray-500 border-b border-white/10">
               <tr>
-                <th className="px-6 py-4 font-bold">Product Name</th>
-                <th className="px-6 py-4 font-bold">Price</th>
-                <th className="px-6 py-4 font-bold">Stock</th>
-                <th className="px-6 py-4 font-bold">Status</th>
-                <th className="px-6 py-4 font-bold text-right">Actions</th>
+                <th className="px-4 md:px-6 py-3 md:py-4 font-bold">Product Name</th>
+                <th className="px-4 md:px-6 py-3 md:py-4 font-bold">Price</th>
+                <th className="px-4 md:px-6 py-3 md:py-4 font-bold">Stock</th>
+                <th className="px-4 md:px-6 py-3 md:py-4 font-bold">Status</th>
+                <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {projectInventory.length > 0 ? projectInventory.map(item => (
-                <tr key={item.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                  <td className="px-6 py-4 font-medium text-white flex items-center gap-3"><Box size={16} className="text-cyan-400" /> {item.name}</td>
-                  <td className="px-6 py-4">${item.price}</td>
-                  <td className="px-6 py-4">{item.stock} units</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${item.stock > 15 ? 'bg-green-500/20 text-green-400' : item.stock > 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>{item.status}</span>
+                <tr key={item.id} className="border-b border-white/5 hover:bg-white/5 transition-colors text-xs md:text-sm">
+                  <td className="px-4 md:px-6 py-4 font-medium text-white flex items-center gap-2 md:gap-3"><Box size={14} className="text-cyan-400" /> {item.name}</td>
+                  <td className="px-4 md:px-6 py-4">${item.price}</td>
+                  <td className="px-4 md:px-6 py-4">{item.stock} units</td>
+                  <td className="px-4 md:px-6 py-4">
+                    <span className={`px-2 py-1 rounded-md text-[9px] md:text-[10px] font-bold uppercase ${item.stock > 15 ? 'bg-green-500/20 text-green-400' : item.stock > 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>{item.status}</span>
                   </td>
-                  <td className="px-6 py-4 text-right flex justify-end gap-2">
+                  <td className="px-4 md:px-6 py-4 text-right flex justify-end gap-2">
                     <button className="p-1.5 hover:bg-white/10 rounded text-gray-300"><Settings size={14} /></button>
                     <button className="p-1.5 hover:bg-red-500/20 hover:text-red-400 rounded text-gray-300 transition-colors"><Trash2 size={14} /></button>
                   </td>
                 </tr>
               )) : (
-                <tr><td colSpan="5" className="px-6 py-12 text-center text-gray-500">No products configured for this landing page yet.</td></tr>
+                <tr><td colSpan="5" className="px-6 py-12 text-center text-gray-500 text-xs md:text-sm">No products configured for this landing page yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -806,15 +809,16 @@ export default function Dashboard() {
   };
 
   const renderSettings = () => (
-    <div className="p-8 max-w-4xl h-full overflow-y-auto custom-scrollbar space-y-8">
+    // 🚀 FIXED: Added p-4 for mobile, md:p-8 for desktop
+    <div className="p-4 md:p-8 max-w-4xl mx-auto h-full overflow-y-auto custom-scrollbar space-y-6 md:space-y-8 pb-24">
       <div>
-        <h2 className="text-2xl font-black text-white">Account Settings</h2>
-        <p className="text-gray-400">Manage your profile, preferences, and subscription tier.</p>
+        <h2 className="text-xl md:text-2xl font-black text-white">Account Settings</h2>
+        <p className="text-xs md:text-sm text-gray-400">Manage your profile, preferences, and subscription tier.</p>
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6">
-        <h3 className="text-lg font-bold text-white border-b border-white/10 pb-4 mb-4 flex items-center gap-2"><User size={18} className="text-cyan-400" /> Profile Information</h3>
-        <div className="flex flex-col md:flex-row gap-8 items-start">
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-5 md:p-6 space-y-6">
+        <h3 className="text-base md:text-lg font-bold text-white border-b border-white/10 pb-4 mb-4 flex items-center gap-2"><User size={18} className="text-cyan-400" /> Profile Information</h3>
+        <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-start">
           <div className="flex flex-col items-center gap-3">
             <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-white/20 flex items-center justify-center bg-black/50 overflow-hidden relative group cursor-pointer hover:border-cyan-500 transition-colors">
               {userProfile.avatar ? <img src={userProfile.avatar} alt="Avatar" className="w-full h-full object-cover" /> : <User size={32} className="text-gray-500" />}
@@ -822,34 +826,36 @@ export default function Dashboard() {
                 <Upload size={20} className="text-white" />
               </div>
             </div>
-            <span className="text-xs text-gray-500 font-bold">Change Avatar</span>
+            <span className="text-[10px] md:text-xs text-gray-500 font-bold">Change Avatar</span>
           </div>
           <div className="flex-1 w-full space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Full Name</label><input type="text" value={userProfile.name} onChange={(e) => setUserProfile({ ...userProfile, name: e.target.value })} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" /></div>
-              <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Email Address</label><input type="email" value={userProfile.email} disabled className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-gray-500 outline-none cursor-not-allowed" /></div>
+              <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Full Name</label><input type="text" value={userProfile.name} onChange={(e) => setUserProfile({ ...userProfile, name: e.target.value })} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none" /></div>
+              <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Email Address</label><input type="email" value={userProfile.email} disabled className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-500 outline-none cursor-not-allowed" /></div>
             </div>
-            <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Company / Agency Name</label><input type="text" value={userProfile.company} onChange={(e) => setUserProfile({ ...userProfile, company: e.target.value })} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" /></div>
-            <button onClick={() => setSyncStatus('Saved')} className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold flex items-center gap-2 transition-colors">Save Profile Changes</button>
+            <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Company / Agency Name</label><input type="text" value={userProfile.company} onChange={(e) => setUserProfile({ ...userProfile, company: e.target.value })} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none" /></div>
+            <button onClick={() => setSyncStatus('Saved')} className="w-full md:w-auto px-6 py-3 md:py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold flex justify-center items-center gap-2 transition-colors text-sm">Save Profile Changes</button>
           </div>
         </div>
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6">
-        <h3 className="text-lg font-bold text-white border-b border-white/10 pb-4 flex items-center gap-2"><CreditCard size={18} className="text-green-400" /> Subscription Tier</h3>
-        <div className="flex gap-4">
-          <div className={`flex-1 p-6 rounded-xl border-2 transition-all ${userTier === 'free' ? 'border-gray-500 bg-gray-900' : 'border-white/10 bg-black/50'}`}>
-            <h4 className="text-xl font-bold text-white mb-2">Starter Plan</h4>
-            <p className="text-sm text-gray-400 mb-4">Basic features, watermarked branding, limited themes.</p>
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-5 md:p-6 space-y-6">
+        <h3 className="text-base md:text-lg font-bold text-white border-b border-white/10 pb-4 flex items-center gap-2"><CreditCard size={18} className="text-green-400" /> Subscription Tier</h3>
+
+        {/* 🚀 FIXED: flex-col on mobile so the cards stack! */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className={`flex-1 p-5 md:p-6 rounded-xl border-2 transition-all ${userTier === 'free' ? 'border-gray-500 bg-gray-900' : 'border-white/10 bg-black/50'}`}>
+            <h4 className="text-lg md:text-xl font-bold text-white mb-2">Starter Plan</h4>
+            <p className="text-xs md:text-sm text-gray-400 mb-4">Basic features, watermarked branding, limited themes.</p>
             <div className="text-2xl font-black text-white">$0 <span className="text-sm font-normal text-gray-500">/mo</span></div>
           </div>
 
-          <div onClick={userTier === 'free' ? handleBuyPro : undefined} className={`flex-1 p-6 rounded-xl border-2 transition-all relative overflow-hidden ${userTier === 'pro' ? 'border-green-500 bg-green-500/5 shadow-[0_0_30px_rgba(34,197,94,0.15)] cursor-default' : 'border-orange-500/50 bg-black/50 hover:border-orange-500 cursor-pointer shadow-[0_0_20px_rgba(249,115,22,0.1)]'}`}>
+          <div onClick={userTier === 'free' ? handleBuyPro : undefined} className={`flex-1 p-5 md:p-6 rounded-xl border-2 transition-all relative overflow-hidden ${userTier === 'pro' ? 'border-green-500 bg-green-500/5 shadow-[0_0_30px_rgba(34,197,94,0.15)] cursor-default' : 'border-orange-500/50 bg-black/50 hover:border-orange-500 cursor-pointer shadow-[0_0_20px_rgba(249,115,22,0.1)]'}`}>
             {userTier === 'pro' && <div className="absolute top-0 right-0 bg-green-500 text-black text-[10px] font-black px-3 py-1 rounded-bl-lg uppercase">Active</div>}
             {userTier === 'free' && <div className="absolute top-0 right-0 bg-orange-500 text-black text-[10px] font-black px-3 py-1 rounded-bl-lg uppercase">Upgrade</div>}
 
-            <h4 className="text-xl font-bold text-white mb-2 flex items-center gap-2">Professional <Sparkles size={16} className={userTier === 'pro' ? 'text-green-400' : 'text-orange-400'} /></h4>
-            <p className="text-sm text-gray-400 mb-4">Unlock Premium Themes, Custom Domains & API.</p>
+            <h4 className="text-lg md:text-xl font-bold text-white mb-2 flex items-center gap-2">Professional <Sparkles size={16} className={userTier === 'pro' ? 'text-green-400' : 'text-orange-400'} /></h4>
+            <p className="text-xs md:text-sm text-gray-400 mb-4">Unlock Premium Themes, Custom Domains & API.</p>
             <div className="text-2xl font-black text-white">$15 <span className="text-sm font-normal text-gray-500">/mo</span></div>
           </div>
         </div>
@@ -1958,7 +1964,9 @@ export default function Dashboard() {
 
     return (
       <div className="flex flex-1 overflow-hidden relative">
-        <aside className="w-64 bg-[#0A0A0E] border-r border-white/5 overflow-y-auto custom-scrollbar flex flex-col py-6 pl-4 pr-2 z-20 shadow-[10px_0_30px_rgba(0,0,0,0.5)]">
+
+        {/* 🚀 FIXED: hidden on mobile (hidden md:flex) so the workspace has room to breathe */}
+        <aside className="hidden md:flex w-64 bg-[#0A0A0E] border-r border-white/5 overflow-y-auto custom-scrollbar flex-col py-6 pl-4 pr-2 z-20 shadow-[10px_0_30px_rgba(0,0,0,0.5)]">
           {['Phase 1: Architecture', 'Phase 2: Core Content', 'Phase 3: Refinement', 'Phase 4: Launch'].map(phase => (
             <div key={phase} className="mb-6">
               <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-2 px-2">{phase}</div>
@@ -1970,8 +1978,7 @@ export default function Dashboard() {
                     <button
                       key={step.id}
                       onClick={() => setActiveEditorStep(step.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${isActive ? 'bg-cyan-600 shadow-[0_0_20px_rgba(6,182,212,0.3)] text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
-                        }`}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${isActive ? 'bg-cyan-600 shadow-[0_0_20px_rgba(6,182,212,0.3)] text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
                     >
                       <step.icon size={16} className={isActive ? 'text-white' : 'opacity-70'} />
                       {step.label}
@@ -1989,7 +1996,8 @@ export default function Dashboard() {
             <div className="h-full bg-cyan-500 transition-all duration-500 ease-out" style={{ width: `${progressPercent}%` }}></div>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+          {/* 🚀 FIXED: Mobile padding (p-4) vs Desktop (md:p-8) */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8 pb-32 md:pb-8">
             <div className="max-w-[1400px] mx-auto animate-in fade-in zoom-in-[0.98] duration-300 h-full">
               {activeEditorStep === 'setup' && renderStep1Setup()}
               {activeEditorStep === 'brand' && renderStep2Brand()}
@@ -2005,21 +2013,22 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="h-20 border-t border-white/5 bg-[#0A0A0E]/80 backdrop-blur-md flex items-center justify-between px-8 z-10 shrink-0">
+          {/* 🚀 FIXED: Mobile Footer wraps elements nicely */}
+          <div className="min-h-[5rem] py-4 md:py-0 md:h-20 border-t border-white/5 bg-[#0A0A0E]/80 backdrop-blur-md flex flex-wrap items-center justify-between px-4 md:px-8 z-10 shrink-0 gap-3">
             <button
               onClick={handlePrevStep}
               disabled={currentStepIndex === 0}
-              className="px-6 py-3 rounded-xl text-sm font-bold text-gray-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30 flex items-center gap-2"
+              className="px-4 md:px-6 py-2.5 md:py-3 rounded-xl text-xs md:text-sm font-bold text-gray-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30 flex items-center gap-2"
             >
-              <ArrowLeft size={16} /> Back
+              <ArrowLeft size={14} /> Back
             </button>
-            <span className="text-xs font-bold text-gray-600 uppercase tracking-widest">Step {currentStepIndex + 1} of {EDITOR_STEPS.length}</span>
+            <span className="text-[10px] md:text-xs font-bold text-gray-600 uppercase tracking-widest hidden sm:block">Step {currentStepIndex + 1} of {EDITOR_STEPS.length}</span>
             <button
               onClick={currentStepIndex === EDITOR_STEPS.length - 1 ? handlePublish : handleNextStep}
-              className="px-6 py-3 bg-white text-black rounded-xl text-sm font-black hover:bg-cyan-400 hover:text-white transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+              className="px-4 md:px-6 py-2.5 md:py-3 bg-white text-black rounded-xl text-xs md:text-sm font-black hover:bg-cyan-400 hover:text-white transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(255,255,255,0.2)]"
             >
               {currentStepIndex === EDITOR_STEPS.length - 1 ? 'Deploy Live' : `Next: ${EDITOR_STEPS[currentStepIndex + 1]?.label}`}
-              {currentStepIndex !== EDITOR_STEPS.length - 1 && <ArrowRight size={16} />}
+              {currentStepIndex !== EDITOR_STEPS.length - 1 && <ArrowRight size={14} />}
             </button>
           </div>
         </main>
