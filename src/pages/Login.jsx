@@ -1,46 +1,54 @@
 import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom'; // 🚀 1. IMPORT ROUTING TOOLS
 import { useAuth } from '../context/AuthContext';
 import { Rocket, Sparkles } from 'lucide-react';
 
 const Login = () => {
-  // Pulling all our powerful Supabase Auth functions from the context!
   const { loginWithGoogle, signupWithEmail, loginWithEmail, resetPassword } = useAuth();
 
-  // States for our form
+  // 🚀 2. INITIALIZE ROUTER HOOKS
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Handle standard Email/Password submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       if (isRegistering) {
-        // 🚀 1. Capture the response and show the smart message
         const response = await signupWithEmail(email, password);
         alert(response.message);
-
-        setIsRegistering(false); // Switch view back to Login
-        setPassword(''); // Clear the password field for safety
+        setIsRegistering(false);
+        setPassword('');
       } else {
         await loginWithEmail(email, password);
-        // Supabase will automatically log them in and redirect them
+
+        // 🚀 3. SMART REDIRECT LOGIC FOR EMAIL
+        const searchParams = new URLSearchParams(location.search);
+        const redirectTo = searchParams.get('redirect');
+
+        if (redirectTo) {
+          // Send the client back to their specific portal!
+          window.location.href = redirectTo;
+        } else {
+          // Default fallback for you (the owner)
+          navigate('/dashboard');
+        }
       }
     } catch (error) {
-      // 🚀 2. AuthContext already formats our errors perfectly now!
       alert(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle Forgot Password
   const handleForgotPassword = async () => {
     if (!email) return alert("Please type your email in the box first to reset your password.");
     try {
-      // 🚀 3. Capture the response and show the smart message
       const response = await resetPassword(email);
       alert(response.message);
     } catch (error) {
@@ -48,9 +56,21 @@ const Login = () => {
     }
   };
 
+  // 🚀 4. SMART REDIRECT LOGIC FOR GOOGLE
+  const handleGoogleAuth = () => {
+    const searchParams = new URLSearchParams(location.search);
+    const redirectTo = searchParams.get('redirect');
+
+    if (redirectTo) {
+      // Pass the return address to Google
+      loginWithGoogle(window.location.origin + redirectTo);
+    } else {
+      loginWithGoogle();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#050505] flex items-center justify-center font-sans text-white p-6 selection:bg-cyan-500/30">
-
       <div className="max-w-md w-full bg-white/5 border border-white/10 p-8 rounded-3xl backdrop-blur-xl shadow-2xl text-center">
 
         {/* HEADER SECTION */}
@@ -62,7 +82,7 @@ const Login = () => {
             {isRegistering ? "Create Account" : "Welcome Back"}
           </h1>
           <p className="text-slate-400 text-sm">
-            {isRegistering ? "Sign up to start building your universe." : "Sign in to access your 3D Universe workspace."}
+            {isRegistering ? "Sign up to start building your universe." : "Sign in to access your workspace."}
           </p>
         </div>
 
@@ -108,10 +128,10 @@ const Login = () => {
           <div className="flex-1 h-px bg-white/10"></div>
         </div>
 
-        {/* GOOGLE LOGIN BUTTON */}
+        {/* 🚀 5. UPDATED GOOGLE BUTTON ONCLICK */}
         <button
           type="button"
-          onClick={loginWithGoogle}
+          onClick={handleGoogleAuth}
           className="w-full flex items-center justify-center gap-3 bg-white text-black hover:bg-gray-200 px-6 py-4 rounded-xl font-bold transition-all shadow-lg hover:scale-[1.02] active:scale-95"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -130,11 +150,6 @@ const Login = () => {
             {isRegistering ? "Log in here" : "Sign up here"}
           </button>
         </p>
-
-        <p className="text-[10px] text-slate-600 mt-6">
-          By continuing, you agree to our Terms of Service and Privacy Policy.
-        </p>
-
       </div>
     </div>
   );

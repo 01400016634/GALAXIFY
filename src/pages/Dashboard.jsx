@@ -808,6 +808,53 @@ export default function Dashboard() {
     )
   };
 
+
+  // 🚀 MEMORY RECOVERY SYSTEM (FIXES REFRESH DATA LOSS)
+  // ==========================================
+
+  // 1. FETCH SAVED PROJECTS FROM SUPABASE ON REFRESH
+  useEffect(() => {
+    const fetchSavedProjects = async () => {
+      // If there is no logged-in user yet, wait.
+      if (!currentUser) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('landing_pages')
+          .select('*')
+          .eq('user_id', currentUser.id) // Get only this specific user's pages
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setSavedPages(data); // Fill the "My Landing Pages" tab!
+        }
+      } catch (err) {
+        console.error("Failed to load projects on refresh:", err.message);
+      }
+    };
+
+    fetchSavedProjects();
+  }, [currentUser]);
+
+  // 2. AUTO-SAVE UNSAVED DRAFTS TO BROWSER CACHE
+  useEffect(() => {
+    if (pageData && pageData.setup && pageData.setup.name) {
+      localStorage.setItem('3duniverse_unsaved_draft', JSON.stringify(pageData));
+    }
+  }, [pageData]);
+
+  // 3. RECOVER UNSAVED DRAFTS ON REFRESH
+  useEffect(() => {
+    const savedDraft = localStorage.getItem('3duniverse_unsaved_draft');
+    if (savedDraft) {
+      setPageData(JSON.parse(savedDraft));
+    }
+  }, []);
+
+
+
   const renderSettings = () => (
     // 🚀 FIXED: Added p-4 for mobile, md:p-8 for desktop
     <div className="p-4 md:p-8 max-w-4xl mx-auto h-full overflow-y-auto custom-scrollbar space-y-6 md:space-y-8 pb-24">

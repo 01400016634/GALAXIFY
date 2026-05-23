@@ -194,8 +194,10 @@ const PortfolioView = () => {
           setError('Portfolio not found');
         }
       } catch (err) {
-        console.error("Error fetching portfolio:", err);
-        setError('Failed to load portfolio');
+        console.error("DEBUG - Full Error Object:", err);
+        console.error("DEBUG - Specific Message:", err.message || err.error_description);
+
+        setError(`Failed to load portfolio: ${err.message || 'Check console for details'}`);
       } finally {
         setLoading(false);
       }
@@ -316,13 +318,16 @@ const PortfolioView = () => {
 
           {/* 🚀 CUSTOMER SIGN IN BUTTON (MOBILE RESPONSIVE) */}
           <button
-            onClick={() => window.location.href = `/client-portal/${username}`}
-            className="flex items-center gap-1 sm:gap-2 px-4 py-2 sm:px-6 sm:py-2.5 rounded-full text-xs sm:text-sm font-black text-white transition-all hover:scale-105 shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:shadow-[0_0_30px_rgba(6,182,212,0.7)] flex-shrink-0 uppercase tracking-wider border border-white/20"
-            style={{ backgroundColor: primaryColor }}
+            onClick={() => {
+              // Capture the current location
+              const currentLocation = window.location.pathname + window.location.search;
+              // Pass the location state to the login page
+              window.location.href = `/client-portal/${username}?redirect=${encodeURIComponent(currentLocation)}`;
+            }}
+            className="...existing classes..."
           >
-            <User size={16} className="text-white" /> Sign In
+            <User size={16} /> Sign In
           </button>
-
         </div>
       </nav>
 
@@ -397,7 +402,7 @@ const PortfolioView = () => {
                       <div className={`inline-flex items-center justify-center gap-2 px-6 py-2 rounded-full border border-white/20 bg-white/5 text-white font-mono mb-8 uppercase tracking-widest text-xs shadow-lg ${block.style?.alignment === 'left' ? 'mr-auto' : block.style?.alignment === 'right' ? 'ml-auto' : 'mx-auto'}`}>
                         {block.title}
                       </div>
-                      <h2 className="text-[3rem] md:text-[4.5rem] font-black text-white mb-4 drop-shadow-[0_5px_20px_rgba(0,0,0,0.8)] leading-tight">
+                      <h2 className="text-4xl sm:text-5xl md:text-[4.5rem] font-black text-white mb-4 drop-shadow-[0_5px_20px_rgba(0,0,0,0.8)] leading-tight break-words">
                         {block.content.headline}
                       </h2>
                       {/* ... existing content rendering ... */}
@@ -445,22 +450,22 @@ const PortfolioView = () => {
 
       </div>
 
-      {/* 🚀 HIGH-END GLOWING SOCIAL DOCK */}
+      {/* 🚀 HIGH-END GLOWING SOCIAL DOCK (MOBILE RESPONSIVE) */}
       {data.contact?.activeSocials && data.contact.activeSocials.length > 0 && (
-        <div className="fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 bg-black/50 border border-white/10 rounded-full backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] pointer-events-auto transition-transform hover:scale-105 max-w-[90vw] overflow-x-auto hide-scrollbar">          {data.contact.activeSocials.map(socialId => {
+        <div className="fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 bg-black/50 border border-white/10 rounded-full backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] pointer-events-auto transition-transform hover:scale-105 max-w-[90vw] overflow-x-auto">
           const url = data.contact.socialUrls?.[socialId] || '#';
           return (
-            <a
-              key={socialId}
-              href={url}
-              target="_blank"
-              rel="noreferrer"
-              className="p-3 bg-white/5 rounded-full transition-all group border border-transparent hover:bg-cyan-500/20 hover:border-cyan-500/50 relative overflow-hidden"
-              title={socialId}
-            >
-              <div className="absolute inset-0 bg-cyan-500 opacity-0 group-hover:opacity-20 blur-md transition-opacity"></div>
-              <SocialIcon type={socialId} className="relative z-10 w-5 h-5 text-gray-300 group-hover:text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0)] group-hover:drop-shadow-[0_0_12px_rgba(6,182,212,0.8)] transition-all" />
-            </a>
+          <a
+            key={socialId}
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="p-3 bg-white/5 rounded-full transition-all group border border-transparent hover:bg-cyan-500/20 hover:border-cyan-500/50 relative overflow-hidden"
+            title={socialId}
+          >
+            <div className="absolute inset-0 bg-cyan-500 opacity-0 group-hover:opacity-20 blur-md transition-opacity"></div>
+            <SocialIcon type={socialId} className="relative z-10 w-5 h-5 text-gray-300 group-hover:text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0)] group-hover:drop-shadow-[0_0_12px_rgba(6,182,212,0.8)] transition-all" />
+          </a>
           )
         })}
         </div>
