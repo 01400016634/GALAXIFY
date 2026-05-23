@@ -183,13 +183,15 @@ const PortfolioView = () => {
         const { data: fetchedData, error: fetchError } = await supabase
           .from('landing_pages')
           .select('page_data')
-          .eq('site_name', username)
-          .maybeSingle();
+          .eq('site_name', username); // Removed .maybeSingle()
 
         if (fetchError) throw fetchError;
 
-        if (fetchedData && fetchedData.page_data) {
-          setData(fetchedData.page_data);
+        // Take the first matching row if multiple exist
+        const portfolio = fetchedData && fetchedData.length > 0 ? fetchedData[0] : null;
+
+        if (portfolio && portfolio.page_data) {
+          setData(portfolio.page_data);
         } else {
           setError('Portfolio not found');
         }

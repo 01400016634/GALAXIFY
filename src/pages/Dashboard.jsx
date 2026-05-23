@@ -1057,102 +1057,122 @@ export default function Dashboard() {
     </div>
   );
 
-  const renderStep3Hero = () => (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
-      {/* Stacks vertically on phones, side-by-side on laptops */}
-      <div className="space-y-6 overflow-y-auto custom-scrollbar pr-2 pb-10">
-        <div>
-          <h3 className="text-2xl font-bold text-white mb-2">Hero & Navigation</h3>
-          <p className="text-sm text-gray-400">Configure your main header and the top navigation menu.</p>
+  const renderStep3Hero = () => {
+    // 🚀 FIX 1: HIDE STANDARD HERO FOR PERSONAL BRAND
+    if (pageData?.setup?.category === 'personal-brand') {
+      return (
+        <div className="flex flex-col items-center justify-center text-center space-y-4 p-8 md:p-16 bg-white/5 border border-white/10 rounded-2xl h-full">
+          <div className="w-20 h-20 bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-400 mb-4">
+            <User size={40} />
+          </div>
+          <h3 className="text-3xl font-black text-white">Hero Section Replaced</h3>
+          <p className="text-gray-400 max-w-lg">
+            Because you selected the <strong>Personal Brand</strong> category, your Introduction, Hero, and About fields have all been merged into a single, specialized portfolio builder.
+            <br /><br />
+            Click <strong>Next: Dynamic Blocks</strong> below to configure your entire portfolio!
+          </p>
         </div>
+      );
+    }
 
-        {/* Main Hero Config */}
-        <div className="space-y-5 bg-white/5 border border-white/10 p-6 rounded-2xl">
+    // 🚀 THE STANDARD HERO FOR ALL OTHER CATEGORIES
+    return (
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
+        {/* Stacks vertically on phones, side-by-side on laptops */}
+        <div className="space-y-6 overflow-y-auto custom-scrollbar pr-2 pb-10">
           <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase mb-2 flex justify-between">Hero Headline <button className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1"><Wand2 size={12} /> AI</button></label>
-            <input type="text" value={pageData.hero.headline} onChange={e => updateNestedData('hero', 'headline', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none text-lg font-bold" placeholder="Enter the Next Reality" />
+            <h3 className="text-2xl font-bold text-white mb-2">Hero & Navigation</h3>
+            <p className="text-sm text-gray-400">Configure your main header and the top navigation menu.</p>
           </div>
-          <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Sub-headline</label><textarea value={pageData.hero.subheadline} onChange={e => updateNestedData('hero', 'subheadline', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none h-20 resize-none" /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">CTA Text</label><input type="text" value={pageData.hero.ctaText} onChange={e => updateNestedData('hero', 'ctaText', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" placeholder="Shop Now" /></div>
-            <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">CTA Link</label><input type="text" value={pageData.hero.ctaLink} onChange={e => updateNestedData('hero', 'ctaLink', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" placeholder="#products" /></div>
+
+          {/* Main Hero Config */}
+          <div className="space-y-5 bg-white/5 border border-white/10 p-6 rounded-2xl">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-2 flex justify-between">Hero Headline <button className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1"><Wand2 size={12} /> AI</button></label>
+              <input type="text" value={pageData.hero.headline} onChange={e => updateNestedData('hero', 'headline', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none text-lg font-bold" placeholder="Enter the Next Reality" />
+            </div>
+            <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">Sub-headline</label><textarea value={pageData.hero.subheadline} onChange={e => updateNestedData('hero', 'subheadline', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none h-20 resize-none" /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">CTA Text</label><input type="text" value={pageData.hero.ctaText} onChange={e => updateNestedData('hero', 'ctaText', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" placeholder="Shop Now" /></div>
+              <div><label className="block text-xs font-bold text-gray-400 uppercase mb-2">CTA Link</label><input type="text" value={pageData.hero.ctaLink} onChange={e => updateNestedData('hero', 'ctaLink', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none" placeholder="#products" /></div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Hero Media Background</label>
+              <select value={pageData.hero.bgType} onChange={e => updateNestedData('hero', 'bgType', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none appearance-none cursor-pointer">
+                <option value="particles">3D Particles Engine</option>
+                <option value="video">Cinematic Video Loop</option>
+                <option value="image">Static High-Res Image</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Hero Media Background</label>
-            <select value={pageData.hero.bgType} onChange={e => updateNestedData('hero', 'bgType', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500 outline-none appearance-none cursor-pointer">
-              <option value="particles">3D Particles Engine</option>
-              <option value="video">Cinematic Video Loop</option>
-              <option value="image">Static High-Res Image</option>
-            </select>
+
+          {/* Top Navigation Builder */}
+          <div className="space-y-4 bg-white/5 border border-white/10 p-6 rounded-2xl mt-6">
+            <h4 className="text-sm font-bold text-white border-b border-white/10 pb-2 flex items-center gap-2"><Layout size={16} className="text-cyan-400" /> Top Navigation Menu</h4>
+            <p className="text-xs text-gray-400">Add the links that will appear between your logo and the Customer Sign-In button.</p>
+
+            <div className="space-y-3 mt-4">
+              {(pageData.hero?.navLinks || []).map((link, idx) => (
+                <div key={idx} className="flex gap-2 items-center bg-black/30 p-2 rounded-xl border border-white/5">
+                  <input type="text" value={link.label} placeholder="Name (e.g. Features)" onChange={e => {
+                    const newLinks = [...(pageData.hero.navLinks || [])];
+                    newLinks[idx].label = e.target.value;
+                    updateNestedData('hero', 'navLinks', newLinks);
+                  }} className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-cyan-500" />
+                  <input type="text" value={link.target} placeholder="Link (e.g. #sec_123)" onChange={e => {
+                    const newLinks = [...(pageData.hero.navLinks || [])];
+                    newLinks[idx].target = e.target.value;
+                    updateNestedData('hero', 'navLinks', newLinks);
+                  }} className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-cyan-500" />
+                  <button onClick={() => {
+                    const newLinks = (pageData.hero.navLinks || []).filter((_, i) => i !== idx);
+                    updateNestedData('hero', 'navLinks', newLinks);
+                  }} className="p-2 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors"><Trash2 size={16} /></button>
+                </div>
+              ))}
+            </div>
+
+            <button onClick={() => {
+              const newLinks = [...(pageData.hero.navLinks || []), { label: 'New Link', target: '#' }];
+              updateNestedData('hero', 'navLinks', newLinks);
+            }} className="w-full py-3 mt-2 bg-black/50 hover:bg-white/5 border border-white/10 border-dashed rounded-xl text-xs font-bold text-cyan-400 flex items-center justify-center gap-2 transition-colors">
+              <Plus size={14} /> Add Menu Item
+            </button>
           </div>
         </div>
 
-        {/* 🚀 NEW: Top Navigation Builder */}
-        <div className="space-y-4 bg-white/5 border border-white/10 p-6 rounded-2xl mt-6">
-          <h4 className="text-sm font-bold text-white border-b border-white/10 pb-2 flex items-center gap-2"><Layout size={16} className="text-cyan-400" /> Top Navigation Menu</h4>
-          <p className="text-xs text-gray-400">Add the links that will appear between your logo and the Customer Sign-In button.</p>
-
-          <div className="space-y-3 mt-4">
-            {(pageData.hero?.navLinks || []).map((link, idx) => (
-              <div key={idx} className="flex gap-2 items-center bg-black/30 p-2 rounded-xl border border-white/5">
-                <input type="text" value={link.label} placeholder="Name (e.g. Features)" onChange={e => {
-                  const newLinks = [...(pageData.hero.navLinks || [])];
-                  newLinks[idx].label = e.target.value;
-                  updateNestedData('hero', 'navLinks', newLinks);
-                }} className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-cyan-500" />
-                <input type="text" value={link.target} placeholder="Link (e.g. #sec_123)" onChange={e => {
-                  const newLinks = [...(pageData.hero.navLinks || [])];
-                  newLinks[idx].target = e.target.value;
-                  updateNestedData('hero', 'navLinks', newLinks);
-                }} className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-cyan-500" />
-                <button onClick={() => {
-                  const newLinks = (pageData.hero.navLinks || []).filter((_, i) => i !== idx);
-                  updateNestedData('hero', 'navLinks', newLinks);
-                }} className="p-2 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors"><Trash2 size={16} /></button>
+        {/* Hero Preview Screen */}
+        <div className="bg-[#050505] border border-white/5 rounded-3xl relative overflow-hidden flex flex-col shadow-2xl min-h-[500px]">
+          <div className="absolute top-4 right-4 z-20 flex bg-black/60 backdrop-blur-md rounded-lg border border-white/10 p-1">
+            <button onClick={() => setPreviewMode('desktop')} className={`p-1.5 rounded-md transition-colors ${previewMode === 'desktop' ? 'bg-white/10 text-white' : 'text-gray-500'}`}><Monitor size={16} /></button>
+            <button onClick={() => setPreviewMode('mobile')} className={`p-1.5 rounded-md transition-colors ${previewMode === 'mobile' ? 'bg-white/10 text-white' : 'text-gray-500'}`}><Smartphone size={16} /></button>
+          </div>
+          <div className={`flex-1 flex flex-col transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${previewMode === 'mobile' ? 'w-[320px] mx-auto border-x border-white/10 bg-black' : 'w-full'}`}>
+            <div className="flex-1 relative flex items-center justify-center p-8 text-center overflow-hidden">
+              {pageData.hero.bgType === 'particles' && (
+                <div className="absolute inset-0 z-0 flex items-center justify-center opacity-30">
+                  <div className="w-[120%] h-[120%] border-[1px] border-cyan-500/20 rounded-full animate-[spin_20s_linear_infinite]" style={{ transform: 'perspective(500px) rotateX(60deg)' }}></div>
+                  <div className="absolute w-[80%] h-[80%] border-[1px] border-blue-500/20 rounded-full animate-[spin_15s_linear_infinite_reverse]" style={{ transform: 'perspective(500px) rotateX(60deg)' }}></div>
+                </div>
+              )}
+              <div className="relative z-10 max-w-lg mx-auto space-y-6">
+                <h1 className={`${previewMode === 'mobile' ? 'text-3xl' : 'text-5xl'} font-black text-transparent bg-clip-text bg-gradient-to-br from-white to-gray-500 leading-tight`} style={{ fontFamily: pageData.brand.font }}>
+                  {pageData.hero.headline || 'Enter the Next Reality'}
+                </h1>
+                <p className="text-gray-400 text-sm sm:text-base">{pageData.hero.subheadline || 'Immersive VR experiences for the next generation.'}</p>
+                <button className="px-8 py-4 rounded-full text-white font-bold shadow-[0_0_20px_rgba(0,0,0,0.4)] transition-all" style={{ backgroundColor: pageData.brand.colors[0] }}>
+                  {pageData.hero.ctaText || 'Explore Features'}
+                </button>
               </div>
-            ))}
-          </div>
-
-          <button onClick={() => {
-            const newLinks = [...(pageData.hero.navLinks || []), { label: 'New Link', target: '#' }];
-            updateNestedData('hero', 'navLinks', newLinks);
-          }} className="w-full py-3 mt-2 bg-black/50 hover:bg-white/5 border border-white/10 border-dashed rounded-xl text-xs font-bold text-cyan-400 flex items-center justify-center gap-2 transition-colors">
-            <Plus size={14} /> Add Menu Item
-          </button>
-        </div>
-      </div>
-
-      {/* Hero Preview Screen */}
-      <div className="bg-[#050505] border border-white/5 rounded-3xl relative overflow-hidden flex flex-col shadow-2xl min-h-[500px]">
-        <div className="absolute top-4 right-4 z-20 flex bg-black/60 backdrop-blur-md rounded-lg border border-white/10 p-1">
-          <button onClick={() => setPreviewMode('desktop')} className={`p-1.5 rounded-md transition-colors ${previewMode === 'desktop' ? 'bg-white/10 text-white' : 'text-gray-500'}`}><Monitor size={16} /></button>
-          <button onClick={() => setPreviewMode('mobile')} className={`p-1.5 rounded-md transition-colors ${previewMode === 'mobile' ? 'bg-white/10 text-white' : 'text-gray-500'}`}><Smartphone size={16} /></button>
-        </div>
-        <div className={`flex-1 flex flex-col transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${previewMode === 'mobile' ? 'w-[320px] mx-auto border-x border-white/10 bg-black' : 'w-full'}`}>
-          <div className="flex-1 relative flex items-center justify-center p-8 text-center overflow-hidden">
-            {pageData.hero.bgType === 'particles' && (
-              <div className="absolute inset-0 z-0 flex items-center justify-center opacity-30">
-                <div className="w-[120%] h-[120%] border-[1px] border-cyan-500/20 rounded-full animate-[spin_20s_linear_infinite]" style={{ transform: 'perspective(500px) rotateX(60deg)' }}></div>
-                <div className="absolute w-[80%] h-[80%] border-[1px] border-blue-500/20 rounded-full animate-[spin_15s_linear_infinite_reverse]" style={{ transform: 'perspective(500px) rotateX(60deg)' }}></div>
-              </div>
-            )}
-            <div className="relative z-10 max-w-lg mx-auto space-y-6">
-              <h1 className={`${previewMode === 'mobile' ? 'text-3xl' : 'text-5xl'} font-black text-transparent bg-clip-text bg-gradient-to-br from-white to-gray-500 leading-tight`} style={{ fontFamily: pageData.brand.font }}>
-                {pageData.hero.headline || 'Enter the Next Reality'}
-              </h1>
-              <p className="text-gray-400 text-sm sm:text-base">{pageData.hero.subheadline || 'Immersive VR experiences for the next generation.'}</p>
-              <button className="px-8 py-4 rounded-full text-white font-bold shadow-[0_0_20px_rgba(0,0,0,0.4)] transition-all" style={{ backgroundColor: pageData.brand.colors[0] }}>
-                {pageData.hero.ctaText || 'Explore Features'}
-              </button>
             </div>
           </div>
         </div>
       </div>
-    </div >
-  );
+    );
+  };
 
-  const renderStep4Blocks = () => {  // <--- CHANGED TO CURLY BRACKET
-    // 🚀 NEW: Intercept the Personal Brand Category
+  const renderStep4Blocks = () => {
+    // 🚀 Intercept the Personal Brand Category
     if (pageData?.setup?.category === 'personal-brand') {
       return (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8 h-full">
@@ -1177,195 +1197,198 @@ export default function Dashboard() {
       );
     }
 
-    <div className="flex flex-col h-full space-y-6">
-      <div className="flex justify-between items-center bg-black/40 p-6 rounded-2xl border border-white/10">
-        <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2"><LayoutDashboard className="text-cyan-500" /> Dynamic Section Builder</h2>
-          <p className="text-gray-400 text-sm">Category: <span className="text-cyan-400 font-bold">{pageData.setup.category?.toUpperCase() || 'None selected'}</span></p>
+    // 🚀 FIX 2: THIS WAS MISSING THE "return (" CAUSING THE BLANK SCREEN!
+    return (
+      <div className="flex flex-col h-full space-y-6">
+        <div className="flex justify-between items-center bg-black/40 p-6 rounded-2xl border border-white/10">
+          <div>
+            <h2 className="text-2xl font-bold text-white flex items-center gap-2"><LayoutDashboard className="text-cyan-500" /> Dynamic Section Builder</h2>
+            <p className="text-gray-400 text-sm">Category: <span className="text-cyan-400 font-bold">{pageData.setup.category?.toUpperCase() || 'None selected'}</span></p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => {
+              alert("AI suggests: Add 'Testimonials' and 'Pricing' to boost conversions!");
+            }} className="bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 px-4 py-2 rounded-lg text-sm font-bold border border-cyan-500/20 flex items-center gap-2 transition-colors">
+              <Sparkles size={16} /> AI Recommend
+            </button>
+
+            {/* ADD CUSTOM SECTION BUTTON ACTIVE */}
+            <button onClick={handleAddCustomSection} className="bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-lg text-sm font-bold border border-white/10 flex items-center gap-2 transition-colors">
+              <PlusCircle size={16} /> Custom Section
+            </button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => {
-            alert("AI suggests: Add 'Testimonials' and 'Pricing' to boost conversions!");
-          }} className="bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 px-4 py-2 rounded-lg text-sm font-bold border border-cyan-500/20 flex items-center gap-2 transition-colors">
-            <Sparkles size={16} /> AI Recommend
-          </button>
 
-          {/* 🚀 ADD CUSTOM SECTION BUTTON ACTIVE */}
-          <button onClick={handleAddCustomSection} className="bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-lg text-sm font-bold border border-white/10 flex items-center gap-2 transition-colors">
-            <PlusCircle size={16} /> Custom Section
-          </button>
-        </div>
-      </div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
+          {pageData.blocks.map((block, index) => (
+            <div key={block.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition-all">
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
-        {pageData.blocks.map((block, index) => (
-          <div key={block.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition-all">
-
-            <div className="bg-black/40 p-4 flex justify-between items-center cursor-pointer hover:bg-white/5 border-b border-white/10" onClick={() => handleUpdateBlock(block.id, 'collapsed', !block.collapsed)}>
-              <div className="flex items-center gap-4">
-                <div className="flex flex-col opacity-50 hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                  <button onClick={() => handleMoveBlock(index, -1)} disabled={index === 0} className="hover:text-white disabled:opacity-30"><ChevronUp size={14} /></button>
-                  <button onClick={() => handleMoveBlock(index, 1)} disabled={index === pageData.blocks.length - 1} className="hover:text-white disabled:opacity-30"><ChevronDown size={14} /></button>
-                </div>
-                <h3 className="text-white font-bold">{block.title}</h3>
-              </div>
-              <div className="flex items-center gap-3">
-                <button className="text-gray-400 hover:text-white text-xs flex items-center gap-1"><Edit size={14} /> Edit Form</button>
-                <div className="w-10 h-5 bg-cyan-500/20 rounded-full flex items-center p-1 cursor-pointer"><div className="w-3 h-3 bg-cyan-500 rounded-full translate-x-5 transition-transform" /></div>
-                <button onClick={(e) => { e.stopPropagation(); handleDeleteBlock(block.id); }} className="text-red-500/50 hover:text-red-400 transition-colors"><Trash2 size={16} /></button>
-              </div>
-            </div>
-
-            {!block.collapsed && (
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-black/20">
-
-                {/* 🚀 DYNAMIC BOX 5: NICHE SPECIFIC FIELDS */}
-                {block.customFields && Object.keys(block.customFields).length > 0 && (
-                  <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-lg p-4 space-y-3 md:col-span-2">
-                    <h4 className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest mb-4 flex items-center gap-2"><Sparkles size={12} /> Box 5: Niche Specific Data</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {Object.keys(block.customFields).map(fieldKey => (
-                        <div key={fieldKey}>
-                          <label className="block text-xs font-bold text-gray-400 uppercase mb-2">
-                            {fieldKey.replace(/([A-Z])/g, ' $1').trim()}
-                          </label>
-                          <input
-                            type="text"
-                            value={block.customFields[fieldKey]}
-                            onChange={e => {
-                              const val = e.target.value;
-                              setPageData(prev => ({
-                                ...prev,
-                                blocks: prev.blocks.map(b => b.id === block.id ? { ...b, customFields: { ...b.customFields, [fieldKey]: val } } : b)
-                              }));
-                            }}
-                            className="w-full bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500"
-                          />
-                        </div>
-                      ))}
-                    </div>
+              <div className="bg-black/40 p-4 flex justify-between items-center cursor-pointer hover:bg-white/5 border-b border-white/10" onClick={() => handleUpdateBlock(block.id, 'collapsed', !block.collapsed)}>
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col opacity-50 hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => handleMoveBlock(index, -1)} disabled={index === 0} className="hover:text-white disabled:opacity-30"><ChevronUp size={14} /></button>
+                    <button onClick={() => handleMoveBlock(index, 1)} disabled={index === pageData.blocks.length - 1} className="hover:text-white disabled:opacity-30"><ChevronDown size={14} /></button>
                   </div>
-                )}
-
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Box 1: Main Content</h4>
-                  <input type="text" placeholder="Headline" value={block.content?.headline || ''} onChange={e => handleUpdateBlockData(block.id, 'content', 'headline', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
-                  <input type="text" placeholder="Sub-headline" value={block.content?.subheadline || ''} onChange={e => handleUpdateBlockData(block.id, 'content', 'subheadline', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
-                  <textarea placeholder="Description" rows="3" value={block.content?.description || ''} onChange={e => handleUpdateBlockData(block.id, 'content', 'description', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500 resize-none" />
+                  <h3 className="text-white font-bold">{block.title}</h3>
                 </div>
+                <div className="flex items-center gap-3">
+                  <button className="text-gray-400 hover:text-white text-xs flex items-center gap-1"><Edit size={14} /> Edit Form</button>
+                  <div className="w-10 h-5 bg-cyan-500/20 rounded-full flex items-center p-1 cursor-pointer"><div className="w-3 h-3 bg-cyan-500 rounded-full translate-x-5 transition-transform" /></div>
+                  <button onClick={(e) => { e.stopPropagation(); handleDeleteBlock(block.id); }} className="text-red-500/50 hover:text-red-400 transition-colors"><Trash2 size={16} /></button>
+                </div>
+              </div>
 
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Box 2: Media Assets</h4>
+              {!block.collapsed && (
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-black/20">
 
-                  {/* Live Media Status Preview indicator */}
-                  {block.media?.bgImage || block.media?.heroImage || block.customFields?.modelUploadGLB || block.media?.video ? (
-                    <div className="text-[10px] text-green-400 bg-green-500/10 p-2 rounded border border-green-500/20 truncate">
-                      📎 Attached: {block.media?.heroImage || block.customFields?.modelUploadGLB || block.media?.video}
+                  {/* DYNAMIC BOX 5: NICHE SPECIFIC FIELDS */}
+                  {block.customFields && Object.keys(block.customFields).length > 0 && (
+                    <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-lg p-4 space-y-3 md:col-span-2">
+                      <h4 className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest mb-4 flex items-center gap-2"><Sparkles size={12} /> Box 5: Niche Specific Data</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {Object.keys(block.customFields).map(fieldKey => (
+                          <div key={fieldKey}>
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">
+                              {fieldKey.replace(/([A-Z])/g, ' $1').trim()}
+                            </label>
+                            <input
+                              type="text"
+                              value={block.customFields[fieldKey]}
+                              onChange={e => {
+                                const val = e.target.value;
+                                setPageData(prev => ({
+                                  ...prev,
+                                  blocks: prev.blocks.map(b => b.id === block.id ? { ...b, customFields: { ...b.customFields, [fieldKey]: val } } : b)
+                                }));
+                              }}
+                              className="w-full bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500"
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ) : (
-                    <div className="text-[10px] text-gray-500 italic p-2 bg-black/20 rounded">No asset attached to this section</div>
                   )}
 
-                  <div className="grid grid-cols-1 gap-2">
-                    {/* IMAGE UPLOAD */}
-                    <label className="bg-black/50 border border-white/10 border-dashed rounded p-3 text-gray-400 hover:text-cyan-400 hover:border-cyan-500 transition-colors flex flex-col items-center justify-center gap-2 cursor-pointer text-xs">
-                      <ImageIcon size={20} /> <span className="text-xs">Upload Section Image</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={async (e) => {
-                          if (e.target.files?.[0]) {
-                            setSyncStatus('Uploading...');
-                            const url = await uploadFileToStorage(e.target.files[0]);
-                            if (url) handleUpdateBlockData(block.id, 'media', 'heroImage', url);
-                            setSyncStatus('Saved');
-                          }
-                        }}
-                      />
-                    </label>
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Box 1: Main Content</h4>
+                    <input type="text" placeholder="Headline" value={block.content?.headline || ''} onChange={e => handleUpdateBlockData(block.id, 'content', 'headline', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
+                    <input type="text" placeholder="Sub-headline" value={block.content?.subheadline || ''} onChange={e => handleUpdateBlockData(block.id, 'content', 'subheadline', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
+                    <textarea placeholder="Description" rows="3" value={block.content?.description || ''} onChange={e => handleUpdateBlockData(block.id, 'content', 'description', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500 resize-none" />
+                  </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      {/* VIDEO UPLOAD */}
-                      <label className="bg-black/50 border border-white/10 rounded p-3 text-gray-400 text-xs flex items-center justify-center gap-2 hover:border-white/30 cursor-pointer">
-                        <Video size={14} /> Add Video
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Box 2: Media Assets</h4>
+
+                    {/* Live Media Status Preview indicator */}
+                    {block.media?.bgImage || block.media?.heroImage || block.customFields?.modelUploadGLB || block.media?.video ? (
+                      <div className="text-[10px] text-green-400 bg-green-500/10 p-2 rounded border border-green-500/20 truncate">
+                        📎 Attached: {block.media?.heroImage || block.customFields?.modelUploadGLB || block.media?.video}
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-gray-500 italic p-2 bg-black/20 rounded">No asset attached to this section</div>
+                    )}
+
+                    <div className="grid grid-cols-1 gap-2">
+                      {/* IMAGE UPLOAD */}
+                      <label className="bg-black/50 border border-white/10 border-dashed rounded p-3 text-gray-400 hover:text-cyan-400 hover:border-cyan-500 transition-colors flex flex-col items-center justify-center gap-2 cursor-pointer text-xs">
+                        <ImageIcon size={20} /> <span className="text-xs">Upload Section Image</span>
                         <input
                           type="file"
-                          accept="video/mp4"
+                          accept="image/*"
                           className="hidden"
                           onChange={async (e) => {
                             if (e.target.files?.[0]) {
                               setSyncStatus('Uploading...');
                               const url = await uploadFileToStorage(e.target.files[0]);
-                              if (url) handleUpdateBlockData(block.id, 'media', 'video', url);
+                              if (url) handleUpdateBlockData(block.id, 'media', 'heroImage', url);
                               setSyncStatus('Saved');
                             }
                           }}
                         />
                       </label>
 
-                      {/* 3D GLB UPLOAD */}
-                      <label className="bg-black/50 border border-white/10 rounded p-3 text-gray-400 text-xs flex items-center justify-center gap-2 hover:border-white/30 cursor-pointer">
-                        <Box size={14} /> Attach 3D Model
-                        <input
-                          type="file"
-                          accept=".glb,.gltf"
-                          className="hidden"
-                          onChange={async (e) => {
-                            if (e.target.files?.[0]) {
-                              setSyncStatus('Uploading...');
-                              const url = await uploadFileToStorage(e.target.files[0]);
-                              if (url) {
-                                const updatedCustom = { ...block.customFields, modelUploadGLB: url };
-                                handleUpdateBlock(block.id, 'customFields', updatedCustom);
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* VIDEO UPLOAD */}
+                        <label className="bg-black/50 border border-white/10 rounded p-3 text-gray-400 text-xs flex items-center justify-center gap-2 hover:border-white/30 cursor-pointer">
+                          <Video size={14} /> Add Video
+                          <input
+                            type="file"
+                            accept="video/mp4"
+                            className="hidden"
+                            onChange={async (e) => {
+                              if (e.target.files?.[0]) {
+                                setSyncStatus('Uploading...');
+                                const url = await uploadFileToStorage(e.target.files[0]);
+                                if (url) handleUpdateBlockData(block.id, 'media', 'video', url);
+                                setSyncStatus('Saved');
                               }
-                              setSyncStatus('Saved');
-                            }
-                          }}
-                        />
-                      </label>
+                            }}
+                          />
+                        </label>
+
+                        {/* 3D GLB UPLOAD */}
+                        <label className="bg-black/50 border border-white/10 rounded p-3 text-gray-400 text-xs flex items-center justify-center gap-2 hover:border-white/30 cursor-pointer">
+                          <Box size={14} /> Attach 3D Model
+                          <input
+                            type="file"
+                            accept=".glb,.gltf"
+                            className="hidden"
+                            onChange={async (e) => {
+                              if (e.target.files?.[0]) {
+                                setSyncStatus('Uploading...');
+                                const url = await uploadFileToStorage(e.target.files[0]);
+                                if (url) {
+                                  const updatedCustom = { ...block.customFields, modelUploadGLB: url };
+                                  handleUpdateBlock(block.id, 'customFields', updatedCustom);
+                                }
+                                setSyncStatus('Saved');
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Box 3: Action Buttons</h4>
-                  <div className="flex gap-2">
-                    <input type="text" placeholder="Button Text" value={block.cta?.buttonText || ''} onChange={e => handleUpdateBlockData(block.id, 'cta', 'buttonText', e.target.value)} className="w-1/3 bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
-                    <input type="text" placeholder="Target Link URL" value={block.cta?.buttonLink || ''} onChange={e => handleUpdateBlockData(block.id, 'cta', 'buttonLink', e.target.value)} className="flex-1 bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Box 3: Action Buttons</h4>
+                    <div className="flex gap-2">
+                      <input type="text" placeholder="Button Text" value={block.cta?.buttonText || ''} onChange={e => handleUpdateBlockData(block.id, 'cta', 'buttonText', e.target.value)} className="w-1/3 bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
+                      <input type="text" placeholder="Target Link URL" value={block.cta?.buttonLink || ''} onChange={e => handleUpdateBlockData(block.id, 'cta', 'buttonLink', e.target.value)} className="flex-1 bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
+                    </div>
+                    <div className="flex gap-2">
+                      <input type="text" placeholder="Secondary Text" value={block.cta?.secondaryText || ''} onChange={e => handleUpdateBlockData(block.id, 'cta', 'secondaryText', e.target.value)} className="w-1/3 bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
+                      <input type="text" placeholder="Secondary Link" value={block.cta?.secondaryLink || ''} onChange={e => handleUpdateBlockData(block.id, 'cta', 'secondaryLink', e.target.value)} className="flex-1 bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <input type="text" placeholder="Secondary Text" value={block.cta?.secondaryText || ''} onChange={e => handleUpdateBlockData(block.id, 'cta', 'secondaryText', e.target.value)} className="w-1/3 bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
-                    <input type="text" placeholder="Secondary Link" value={block.cta?.secondaryLink || ''} onChange={e => handleUpdateBlockData(block.id, 'cta', 'secondaryLink', e.target.value)} className="flex-1 bg-black/50 border border-white/10 rounded p-3 text-white text-sm outline-none focus:border-cyan-500" />
+
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Box 4: Style Options</h4>
+                    <select value={block.style?.animationType || 'fade-up'} onChange={e => handleUpdateBlockData(block.id, 'style', 'animationType', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded p-3 text-gray-300 text-sm outline-none focus:border-cyan-500 cursor-pointer">
+                      <option value="fade-up">Animation: Fade Up</option>
+                      <option value="3d-flip">Animation: 3D Flip</option>
+                      <option value="slide-right">Animation: Slide Right</option>
+                    </select>
+                    <select value={block.style?.alignment || 'left'} onChange={e => handleUpdateBlockData(block.id, 'style', 'alignment', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded p-3 text-gray-300 text-sm outline-none focus:border-cyan-500 cursor-pointer">
+                      <option value="left">Text Align: Left</option>
+                      <option value="center">Text Align: Center</option>
+                      <option value="right">Text Align: Right</option>
+                    </select>
                   </div>
-                </div>
 
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Box 4: Style Options</h4>
-                  <select value={block.style?.animationType || 'fade-up'} onChange={e => handleUpdateBlockData(block.id, 'style', 'animationType', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded p-3 text-gray-300 text-sm outline-none focus:border-cyan-500 cursor-pointer">
-                    <option value="fade-up">Animation: Fade Up</option>
-                    <option value="3d-flip">Animation: 3D Flip</option>
-                    <option value="slide-right">Animation: Slide Right</option>
-                  </select>
-                  <select value={block.style?.alignment || 'left'} onChange={e => handleUpdateBlockData(block.id, 'style', 'alignment', e.target.value)} className="w-full bg-black/50 border border-white/10 rounded p-3 text-gray-300 text-sm outline-none focus:border-cyan-500 cursor-pointer">
-                    <option value="left">Text Align: Left</option>
-                    <option value="center">Text Align: Center</option>
-                    <option value="right">Text Align: Right</option>
-                  </select>
                 </div>
-
-              </div>
-            )}
-          </div>
-        ))}
-        {pageData.blocks.length === 0 && (
-          <div className="h-40 border-2 border-dashed border-white/10 rounded-2xl flex items-center justify-center text-gray-500 flex-col gap-2">
-            <Layers size={32} className="opacity-50" />
-            <p>Your canvas is empty. Select a Category in Phase 1 to auto-generate sections.</p>
-          </div>
-        )}
+              )}
+            </div>
+          ))}
+          {pageData.blocks.length === 0 && (
+            <div className="h-40 border-2 border-dashed border-white/10 rounded-2xl flex items-center justify-center text-gray-500 flex-col gap-2">
+              <Layers size={32} className="opacity-50" />
+              <p>Your canvas is empty. Select a Category in Phase 1 to auto-generate sections.</p>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    );
   };
 
   const renderStep5Theme = () => {
