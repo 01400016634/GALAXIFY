@@ -166,4 +166,3 @@ export default function PersonalBrandBuilder({ pageData, setPageData }) {
     );
 };
 
-export default PersonalBrandBuilder;
