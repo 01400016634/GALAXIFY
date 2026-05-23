@@ -274,8 +274,8 @@ const PortfolioView = () => {
 
       {/* 🚀 1. DYNAMIC NAVBAR WITH GOOGLE SIGN IN */}
       <nav className={`fixed top-0 w-full z-50 transition-all duration-500 pointer-events-auto border-b ${isScrolled ? 'bg-black/70 backdrop-blur-xl border-white/10 shadow-lg py-3' : 'bg-transparent border-transparent py-6'}`}>
-        <div className="max-w-[90rem] mx-auto px-6 flex justify-between items-center">
-
+        {/* Changed px-6 to px-4 sm:px-6 and added w-full */}
+        <div className="max-w-[90rem] mx-auto px-4 sm:px-6 flex justify-between items-center w-full">
           {/* Glowing Circular Logo & Brand */}
           <a href="#home" className="flex items-center gap-4 group flex-shrink-0">
             {data.brand?.logo && (
@@ -314,10 +314,10 @@ const PortfolioView = () => {
             )}
           </div>
 
-          {/* 🚀 CUSTOMER SIGN IN BUTTON */}
+          {/* 🚀 CUSTOMER SIGN IN BUTTON (MOBILE RESPONSIVE) */}
           <button
             onClick={() => window.location.href = `/client-portal/${username}`}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-black text-white transition-all hover:scale-105 shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:shadow-[0_0_30px_rgba(6,182,212,0.7)] flex-shrink-0 uppercase tracking-wider border border-white/20"
+            className="flex items-center gap-1 sm:gap-2 px-4 py-2 sm:px-6 sm:py-2.5 rounded-full text-xs sm:text-sm font-black text-white transition-all hover:scale-105 shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:shadow-[0_0_30px_rgba(6,182,212,0.7)] flex-shrink-0 uppercase tracking-wider border border-white/20"
             style={{ backgroundColor: primaryColor }}
           >
             <User size={16} className="text-white" /> Sign In
@@ -334,10 +334,12 @@ const PortfolioView = () => {
           <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 backdrop-blur-md text-cyan-300 font-mono mb-8 uppercase tracking-widest text-sm pointer-events-auto">
             {data.setup?.category || 'Professional Portfolio'}
           </div>
-          <h1 className="text-[4rem] md:text-[6rem] lg:text-[7rem] font-black text-white mb-6 drop-shadow-[0_10px_40px_rgba(0,0,0,0.8)] tracking-tighter leading-tight pointer-events-auto">
+          {/* OLD: text-[4rem] md:text-[6rem] lg:text-[7rem] */}
+          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[7rem] font-black text-white mb-6 leading-tight drop-shadow-2xl px-4 break-words">
             {data.hero?.headline || data.setup?.name || '3D Universe'}
           </h1>
-          <p className="text-xl md:text-2xl text-gray-200 max-w-3xl mb-12 font-light drop-shadow-lg bg-black/40 p-6 rounded-2xl backdrop-blur-sm border border-white/5 pointer-events-auto">
+
+          <p className="text-lg sm:text-xl md:text-2xl text-gray-200 max-w-xs sm:max-w-md md:max-w-3xl mx-auto mb-12 font-light px-4">
             {data.hero?.subheadline || 'Explore the digital frontier.'}
           </p>
           {data.hero?.ctaText && (
@@ -445,23 +447,22 @@ const PortfolioView = () => {
 
       {/* 🚀 HIGH-END GLOWING SOCIAL DOCK */}
       {data.contact?.activeSocials && data.contact.activeSocials.length > 0 && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 p-2.5 bg-black/50 border border-white/10 rounded-full backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] pointer-events-auto transition-transform hover:scale-105">
-          {data.contact.activeSocials.map(socialId => {
-            const url = data.contact.socialUrls?.[socialId] || '#';
-            return (
-              <a
-                key={socialId}
-                href={url}
-                target="_blank"
-                rel="noreferrer"
-                className="p-3 bg-white/5 rounded-full transition-all group border border-transparent hover:bg-cyan-500/20 hover:border-cyan-500/50 relative overflow-hidden"
-                title={socialId}
-              >
-                <div className="absolute inset-0 bg-cyan-500 opacity-0 group-hover:opacity-20 blur-md transition-opacity"></div>
-                <SocialIcon type={socialId} className="relative z-10 w-5 h-5 text-gray-300 group-hover:text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0)] group-hover:drop-shadow-[0_0_12px_rgba(6,182,212,0.8)] transition-all" />
-              </a>
-            )
-          })}
+        <div className="fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 bg-black/50 border border-white/10 rounded-full backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] pointer-events-auto transition-transform hover:scale-105 max-w-[90vw] overflow-x-auto hide-scrollbar">          {data.contact.activeSocials.map(socialId => {
+          const url = data.contact.socialUrls?.[socialId] || '#';
+          return (
+            <a
+              key={socialId}
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="p-3 bg-white/5 rounded-full transition-all group border border-transparent hover:bg-cyan-500/20 hover:border-cyan-500/50 relative overflow-hidden"
+              title={socialId}
+            >
+              <div className="absolute inset-0 bg-cyan-500 opacity-0 group-hover:opacity-20 blur-md transition-opacity"></div>
+              <SocialIcon type={socialId} className="relative z-10 w-5 h-5 text-gray-300 group-hover:text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0)] group-hover:drop-shadow-[0_0_12px_rgba(6,182,212,0.8)] transition-all" />
+            </a>
+          )
+        })}
         </div>
 
       )}
