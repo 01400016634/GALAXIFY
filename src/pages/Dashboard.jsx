@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import PersonalBrandBuilder from '../components/PersonalBrandBuilder';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/supabase';
 import {
@@ -9,7 +10,7 @@ import {
   AlignLeft, Play, Wand2, Smartphone, Monitor, Type, Palette, Video, Share2, Search,
   Zap, Layers, Sparkles, Sliders, Copy, ChevronsUpDown, ArrowRight, ArrowLeft, Users, Activity,
   ArrowUpRight, Instagram, MessageSquare, FileText, DownloadCloud, Fingerprint, User, Crown, ExternalLink,
-  LayoutDashboard, PlusCircle, Edit, LogOut
+  LayoutDashboard, PlusCircle, Edit, LogOut, UserCircle
 } from 'lucide-react';
 
 const SOCIAL_PLATFORMS = [
@@ -96,7 +97,21 @@ const INITIAL_PAGE_DATA = {
   media: [],
   contact: { activeSocials: [], socialUrls: {} },
   seo: { title: '', description: '' },
-  publish: { customDomain: '', visibility: 'public' }
+  publish: { customDomain: '', visibility: 'public' },
+  personalBrand: {
+    intro: { designation: '', headline: '', contactBtn: '', workBtn: '' },
+    about: { description: '', totalExp: '', totalOrg: '', totalWebinars: '', cvLink: '', profileLink: '' },
+    skills: [],
+    workExperience: [],
+    businessProfile: { name: '', punchline: '', desc: '', members: '', countries: '', featureList: [] },
+    certificates: [],
+    trainings: [],
+    consultancies: [],
+    webinars: [],
+    dashboards: [],
+    galleries: { gis: [], teamwork: [] },
+    contactLinks: { facebook: '', linkedin: '', youtube: '', whatsapp: '', website: '' }
+  }
 };
 
 const EDITOR_STEPS = [
@@ -248,55 +263,53 @@ export default function Dashboard() {
 
     // 2. Fetch User Data, Portfolio, and Sync with MongoDB
     const fetchUserData = async () => {
+      if (!currentUser) return;
+
       try {
-        // A. Sync user to MongoDB (so they exist in your CMS)
-        await fetch('/api/owner/sync-user', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: userName,
-            email: currentUser.email,
-            uid: currentUser.id
-          })
-        });
+        // 🚀 A & B: FETCH PROFILE & TIER FROM SUPABASE
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', currentUser.id)
+          .maybeSingle();
 
-        // B. Fetch MongoDB Plan & Portfolio
-        const mongoResponse = await fetch(`/api/user/portfolio/${currentUser.id}`);
-        if (mongoResponse.ok) {
-          const mongoData = await mongoResponse.json();
-
-          // Set their plan tier safely inside the scope
-          if (mongoData.user) {
-            setUserTier(mongoData.user.plan === 'pro' || mongoData.user.plan === 'premium' ? 'pro' : 'free');
-          }
-
-          // Load MongoDB portfolio into editor form if it exists
-          if (mongoData.portfolio) {
-            setPageData(prev => ({ ...prev, ...mongoData.portfolio }));
-          }
+        if (profileError && profileError.code !== 'PGRST116') {
+          // (PGRST116 just means no rows found, which is fine for new users)
+          console.error("Error fetching profile:", profileError);
         }
 
-        // C. THE FIX: Load Saved Pages from Supabase (Where you published them!)
+        // Set their plan tier safely
+        if (profileData) {
+          setUserTier(profileData.plan === 'pro' || profileData.plan === 'premium' ? 'pro' : 'free');
+        } else {
+          setUserTier('free'); // Default for brand new users
+        }
+
+
+        // 🚀 C: FETCH SAVED PAGES (This part was mostly correct!)
         const { data: supabasePages, error: supabaseError } = await supabase
           .from('landing_pages')
           .select('*')
-          .eq('user_id', currentUser.id);
+          .eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false }); // Puts newest pages at the top
 
-        if (supabasePages && !supabaseError) {
+        if (supabaseError) throw supabaseError;
+
+        if (supabasePages && supabasePages.length > 0) {
           // Format the Supabase data so your UI understands it
           const formattedPages = supabasePages.map(page => ({
-            id: page.id,        // Set the ID
-            _id: page.id,       // Ensure _id exists so the delete button doesn't crash
-            ...page.page_data,  // Unpack your saved layout data
+            id: page.id,
+            _id: page.id,       // Ensures the delete button doesn't crash
+            ...page.page_data,
             status: 'Published',
-            publish: { publicUrl: page.public_url }
+            publish: { publicUrl: page.public_url || `${window.location.origin}/3DUNIVERSE/${page.site_name}` }
           }));
 
-          setSavedPages(formattedPages); // This stops them from disappearing!
+          setSavedPages(formattedPages);
         }
 
       } catch (error) {
-        console.error("Database connection failed:", error);
+        console.error("Supabase connection failed:", error);
       }
     };
 
@@ -1074,7 +1087,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-       // Find this inside renderStep3Hero() in Dashboard.jsx
         {/* 🚀 NEW: Top Navigation Builder */}
         <div className="space-y-4 bg-white/5 border border-white/10 p-6 rounded-2xl mt-6">
           <h4 className="text-sm font-bold text-white border-b border-white/10 pb-2 flex items-center gap-2"><Layout size={16} className="text-cyan-400" /> Top Navigation Menu</h4>
@@ -1139,7 +1151,32 @@ export default function Dashboard() {
     </div >
   );
 
-  const renderStep4Blocks = () => (
+  const renderStep4Blocks = () => {  // <--- CHANGED TO CURLY BRACKET
+    // 🚀 NEW: Intercept the Personal Brand Category
+    if (pageData?.setup?.category === 'personal-brand') {
+      return (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8 h-full">
+          {/* Left Side: The Massive Form */}
+          <div className="space-y-6 overflow-y-auto custom-scrollbar pr-2 pb-10 h-full">
+            <div className="flex justify-between items-center bg-black/40 p-6 rounded-2xl border border-white/10">
+              <div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2"><UserCircle className="text-rose-400" /> Personal Brand Builder</h2>
+                <p className="text-gray-400 text-sm">Configure your professional portfolio data.</p>
+              </div>
+            </div>
+
+            {/* Renders our new separate file! */}
+            <PersonalBrandBuilder pageData={pageData} setPageData={setPageData} />
+          </div>
+
+          {/* Right Side: Preview Box */}
+          <div className="w-full h-[400px] md:h-[600px] border border-white/10 rounded-2xl overflow-hidden bg-black/50 sticky top-6 flex items-center justify-center">
+            <p className="text-gray-500 font-bold">Personal Brand Live Preview coming soon...</p>
+          </div>
+        </div>
+      );
+    }
+
     <div className="flex flex-col h-full space-y-6">
       <div className="flex justify-between items-center bg-black/40 p-6 rounded-2xl border border-white/10">
         <div>
@@ -1329,7 +1366,7 @@ export default function Dashboard() {
         )}
       </div>
     </div>
-  );
+  };
 
   const renderStep5Theme = () => {
     // 🚀 Complete Master Definition mapping for all 15 AAA 3D environments
@@ -2000,7 +2037,8 @@ export default function Dashboard() {
               { id: 'ecommerce', name: 'E-Commerce', icon: ShoppingBag, color: 'text-cyan-400' },
               { id: 'learning', name: 'Learning Platform', icon: FileText, color: 'text-green-400' },
               { id: 'service', name: 'Service / Agency', icon: Users, color: 'text-blue-400' },
-              { id: 'gadgets', name: 'Digital Gadgets', icon: Monitor, color: 'text-purple-400' }
+              { id: 'gadgets', name: 'Digital Gadgets', icon: Monitor, color: 'text-purple-400' },
+              { id: 'personal-brand', name: 'Personal Brand', icon: UserCircle, color: 'text-rose-400' }
             ].map(cat => (
               <div key={cat.id} onClick={() => createNewPage(cat.id)} className="bg-white/5 border border-white/10 p-6 rounded-2xl hover:bg-white/10 hover:border-white/30 cursor-pointer transition-all text-center group">
                 <cat.icon size={32} className={`mx-auto mb-4 ${cat.color} group-hover:scale-110 transition-transform`} />

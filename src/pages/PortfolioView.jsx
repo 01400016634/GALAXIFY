@@ -453,23 +453,23 @@ const PortfolioView = () => {
       {/* 🚀 HIGH-END GLOWING SOCIAL DOCK (MOBILE RESPONSIVE) */}
       {data.contact?.activeSocials && data.contact.activeSocials.length > 0 && (
         <div className="fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 bg-black/50 border border-white/10 rounded-full backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] pointer-events-auto transition-transform hover:scale-105 max-w-[90vw] overflow-x-auto">
-          const url = data.contact.socialUrls?.[socialId] || '#';
-          return (
-          <a
-            key={socialId}
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="p-3 bg-white/5 rounded-full transition-all group border border-transparent hover:bg-cyan-500/20 hover:border-cyan-500/50 relative overflow-hidden"
-            title={socialId}
-          >
-            <div className="absolute inset-0 bg-cyan-500 opacity-0 group-hover:opacity-20 blur-md transition-opacity"></div>
-            <SocialIcon type={socialId} className="relative z-10 w-5 h-5 text-gray-300 group-hover:text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0)] group-hover:drop-shadow-[0_0_12px_rgba(6,182,212,0.8)] transition-all" />
-          </a>
-          )
-        })}
+          {data.contact.activeSocials.map(socialId => {
+            const url = data.contact.socialUrls?.[socialId] || '#';
+            return (
+              <a
+                key={socialId}
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="p-3 bg-white/5 rounded-full transition-all group border border-transparent hover:bg-cyan-500/20 hover:border-cyan-500/50 relative overflow-hidden"
+                title={socialId}
+              >
+                <div className="absolute inset-0 bg-cyan-500 opacity-0 group-hover:opacity-20 blur-md transition-opacity"></div>
+                <SocialIcon type={socialId} className="relative z-10 w-5 h-5 text-gray-300 group-hover:text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0)] group-hover:drop-shadow-[0_0_12px_rgba(6,182,212,0.8)] transition-all" />
+              </a>
+            );
+          })}
         </div>
-
       )}
       {/* 🚀 THE CHECKOUT MODAL INJECTION */}
       {selectedProduct && (
