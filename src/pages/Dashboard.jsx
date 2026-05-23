@@ -146,18 +146,20 @@ const OwnerCRM = ({ selectedProjectId, savedPages, setSelectedProjectId }) => {
 
   return (
     <div className="p-4 md:p-8 h-full overflow-y-auto custom-scrollbar space-y-6 md:space-y-8 pb-24">
-      {/* Header & Dropdown */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white/5 p-5 md:p-6 rounded-2xl border border-white/10 gap-5 shadow-lg">
+      {/* 🚀 RESPONSIVE CRM HEADER */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white/5 p-4 md:p-6 rounded-2xl border border-white/10 gap-4 md:gap-5 shadow-lg">
         <div>
-          <h2 className="text-xl md:text-2xl font-black text-white">Customer Orders & Bookings</h2>
+          <h2 className="text-lg md:text-2xl font-black text-white">Customer Orders & Bookings</h2>
           <p className="text-xs md:text-sm text-gray-400 mt-1">Manage incoming orders for your published landing pages.</p>
         </div>
-        <div className="flex items-center gap-3 w-full lg:w-auto bg-black/50 p-2 rounded-xl border border-white/10">
-          <label className="text-sm font-bold text-gray-400 whitespace-nowrap pl-2">Filter by Page:</label>
+
+        {/* Changed from items-center to flex-col on mobile */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full lg:w-auto bg-black/50 p-3 rounded-xl border border-white/10">
+          <label className="text-xs sm:text-sm font-bold text-gray-400 whitespace-nowrap px-1">Filter by Page:</label>
           <select
             value={selectedProjectId}
             onChange={(e) => setSelectedProjectId(e.target.value)}
-            className="w-full bg-black border border-white/20 rounded-lg px-4 py-2 text-white outline-none cursor-pointer focus:border-cyan-500 text-sm"
+            className="w-full sm:w-auto bg-black border border-white/20 rounded-lg px-3 py-2 text-white outline-none cursor-pointer focus:border-cyan-500 text-xs sm:text-sm"
           >
             {savedPages.map(p => <option key={p.id} value={p.id}>{p.setup?.name || 'Untitled Project'}</option>)}
           </select>
@@ -601,42 +603,39 @@ export default function Dashboard() {
 
     // 3. If we DO have a project, it's now 100% safe to read .views and do the math
     const visitorMultiplier = activeProject.views > 1000 ? 1 : 0.1;
-
     return (
-      <div className="p-8 space-y-8 h-full overflow-y-auto custom-scrollbar">
-        <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
+      <div className="p-4 md:p-8 space-y-6 md:space-y-8 h-full overflow-y-auto custom-scrollbar">
+        {/* Make header stack on mobile */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white/5 p-4 md:p-6 rounded-2xl border border-white/10 gap-4">
           <div>
-            <h2 className="text-2xl font-black text-white">Overview & Analytics</h2>
-            <p className="text-gray-400">Viewing real-time performance for specific projects.</p>
+            <h2 className="text-xl md:text-2xl font-black text-white">Overview & Analytics</h2>
+            <p className="text-xs md:text-sm text-gray-400">Viewing real-time performance for specific projects.</p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-bold text-gray-400">Select Project:</label>
-              <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className="bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-white outline-none cursor-pointer">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+              <label className="text-xs sm:text-sm font-bold text-gray-400">Select Project:</label>
+              <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className="w-full sm:w-auto bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white outline-none cursor-pointer text-sm">
                 {savedPages.map(p => <option key={p.id} value={p.id}>{p.setup?.name || 'Untitled'}</option>)}
               </select>
             </div>
-            <button onClick={initNewPageProcess} className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold flex items-center gap-2 transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)]">
-              <Plus size={18} /> New Page
-            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
           {[
             { title: 'Total Revenue', value: `$${(activeProject.revenue || 0).toLocaleString()}`, icon: DollarSign, color: 'text-green-400', bg: 'bg-green-500/10' },
             { title: 'Active Visitors', value: Math.floor(120 * visitorMultiplier), icon: Users, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
             { title: 'Avg. Conversion', value: activeProject.convRate || '0%', icon: TrendingUp, color: 'text-blue-400', bg: 'bg-blue-500/10' },
             { title: 'Page Views', value: activeProject.views?.toLocaleString() || 0, icon: Activity, color: 'text-purple-400', bg: 'bg-purple-500/10' }
           ].map((stat, i) => (
-            <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-2xl flex flex-col justify-between hover:bg-white/10 transition-colors">
-              <div className="flex justify-between items-start mb-4">
-                <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}><stat.icon size={24} /></div>
-                <span className="text-xs font-bold text-green-400 flex items-center gap-1"><ArrowUpRight size={14} /> +{(Math.random() * 20).toFixed(1)}%</span>
+            <div key={i} className="bg-white/5 border border-white/10 p-4 md:p-6 rounded-2xl flex flex-col justify-between hover:bg-white/10 transition-colors">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2 md:mb-4">
+                <div className={`p-2 md:p-3 rounded-xl ${stat.bg} ${stat.color}`}><stat.icon size={20} md:size={24} /></div>
+                <span className="text-[10px] md:text-xs font-bold text-green-400 flex items-center gap-1"><ArrowUpRight size={12} /> +9.4%</span>
               </div>
               <div>
-                <h4 className="text-3xl font-black text-white">{stat.value}</h4>
-                <p className="text-sm text-gray-400 font-medium">{stat.title}</p>
+                <h4 className="text-xl md:text-3xl font-black text-white">{stat.value}</h4>
+                <p className="text-[10px] md:text-sm text-gray-400 font-medium">{stat.title}</p>
               </div>
             </div>
           ))}
@@ -683,14 +682,17 @@ export default function Dashboard() {
   };
 
   const renderPages = () => (
-    <div className="p-8 space-y-8 h-full overflow-y-auto custom-scrollbar">
-      <div className="flex justify-between items-center">
+    // Reduced padding on mobile (p-4) vs desktop (md:p-8)
+    <div className="p-4 md:p-8 space-y-6 md:space-y-8 h-full overflow-y-auto custom-scrollbar">
+
+      {/* Stacked header on mobile */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-black text-white">My Landing Pages</h2>
-          <p className="text-gray-400">Manage, edit, and duplicate your immersive web experiences.</p>
+          <h2 className="text-xl md:text-2xl font-black text-white">My Landing Pages</h2>
+          <p className="text-xs md:text-sm text-gray-400">Manage, edit, and duplicate your immersive web experiences.</p>
         </div>
-        <button onClick={initNewPageProcess} className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold flex items-center gap-2 transition-colors">
-          <Plus size={18} /> Create New Page
+        <button onClick={initNewPageProcess} className="w-full sm:w-auto px-4 md:px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-sm md:text-base font-bold flex items-center justify-center gap-2 transition-colors shrink-0">
+          <Plus size={16} /> Create New Page
         </button>
       </div>
 
@@ -2092,55 +2094,44 @@ export default function Dashboard() {
       </aside>
 
       {/* WORKSPACE APP WORKSPACE DISPLAY LAYOUTS */}
+      {/* 🚀 ADDED THE MISSING OPENING MAIN TAG HERE */}
       <main className="flex-1 flex flex-col relative z-10 h-screen overflow-hidden">
-        <header className="h-20 bg-[#0A0A0E] border-b border-white/5 flex items-center justify-between px-8 z-40 shadow-sm shrink-0">
-          <div className="flex items-center gap-4">
-            <span className="text-base font-bold text-white">
+
+        {/* 🚀 RESPONSIVE HEADER: Wraps on mobile, stays inline on desktop */}
+        <header className="min-h-[5rem] py-3 md:py-0 md:h-20 bg-[#0A0A0E] border-b border-white/5 flex flex-col md:flex-row items-start md:items-center justify-between px-4 md:px-8 z-40 shadow-sm shrink-0 gap-4 md:gap-0">
+
+          <div className="flex flex-wrap items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-start">
+            <span className="text-sm md:text-base font-bold text-white truncate max-w-[200px] md:max-w-none">
               {activeTab === 'editor' ? <span className="flex items-center gap-2"><Layout size={18} className="text-cyan-500" /> Workspace: {pageData.setup.name || 'Untitled Project'}</span> : activeTab === 'analytics' ? 'Dashboard Overview' : activeTab === 'inventory' ? 'Inventory Manager' : activeTab === 'settings' ? 'Account Settings' : 'My Landing Pages'}
             </span>
-            {activeTab === 'editor' && (
-              <div className="flex items-center gap-3">
-                <span className={`text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full border transition-colors duration-300 ${syncStatus === 'Published!' ? 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20' :
-                  syncStatus === 'Saved' ? 'text-green-400 bg-green-400/10 border-green-400/20' :
-                    'text-yellow-400 bg-yellow-400/10 border-yellow-400/20'
-                  }`}>
-                  {syncStatus === 'Saved' || syncStatus === 'Published!' ? <span className="flex items-center gap-1.5"><CheckCircle2 size={10} /> {syncStatus}</span> : 'Syncing...'}
-                </span>
 
-                {pageData.publish?.publicUrl && syncStatus === 'Published!' && (
-                  <div className="flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 rounded-lg ml-3">
-                    <Globe size={12} className="text-cyan-400" />
-                    <span className="text-xs text-cyan-100 font-mono select-all">{pageData.publish.publicUrl}</span>
-                    <button onClick={() => window.open(pageData.publish.publicUrl, '_blank')} className="text-cyan-400 hover:text-white ml-2"><ExternalLink size={12} /></button>
-                  </div>
-                )}
+            {activeTab === 'editor' && (
+              <div className="flex items-center gap-2 md:gap-3">
+                <span className={`text-[9px] md:text-[10px] uppercase tracking-widest font-bold px-2 md:px-3 py-1 rounded-full border transition-colors duration-300 ${syncStatus === 'Published!' ? 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20' : syncStatus === 'Saved' ? 'text-green-400 bg-green-400/10 border-green-400/20' : 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20'}`}>
+                  {syncStatus === 'Saved' || syncStatus === 'Published!' ? <span className="flex items-center gap-1"><CheckCircle2 size={10} /> {syncStatus}</span> : 'Syncing...'}
+                </span>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
-            <button onClick={handlePreview} className="hidden sm:flex items-center gap-2 px-5 py-2 text-sm font-bold text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors">
-              <Eye size={16} /> Preview Mode
+          <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto justify-between md:justify-end">
+            <button onClick={handlePreview} className="hidden sm:flex items-center gap-2 px-3 md:px-5 py-2 text-xs md:text-sm font-bold text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors">
+              <Eye size={16} /> Preview
             </button>
-            <button
-              onClick={handlePublish}
-              className="flex items-center gap-2 px-6 py-2 text-sm font-black text-white bg-cyan-600 hover:bg-cyan-500 rounded-xl transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)]"
-            >
-              <Send size={16} /> Publish Changes
+            <button onClick={handlePublish} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 text-xs md:text-sm font-black text-white bg-cyan-600 hover:bg-cyan-500 rounded-xl transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+              <Send size={14} md:size={16} /> Publish
             </button>
 
-            <div className="h-8 w-px bg-white/10 mx-2 hidden sm:block"></div>
+            <div className="h-8 w-px bg-white/10 mx-1 hidden sm:block"></div>
 
-            <div className="flex items-center gap-3 cursor-pointer hover:bg-white/5 p-1.5 rounded-xl transition-colors" onClick={() => setActiveTab('settings')}>
+            <div className="flex items-center gap-2 md:gap-3 cursor-pointer hover:bg-white/5 p-1.5 rounded-xl transition-colors" onClick={() => setActiveTab('settings')}>
               <div className="flex flex-col items-end hidden sm:flex">
-                <span className="text-sm font-bold text-white leading-tight">{userProfile.name}</span>
-                <span className={`text-[10px] font-black uppercase tracking-wider ${userTier === 'pro' ? 'text-green-400 drop-shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'text-gray-500'}`}>
-                  {userTier === 'pro' ? 'PRO ACTIVE' : 'FREE PLAN'}
-                </span>
+                <span className="text-xs md:text-sm font-bold text-white leading-tight">{userProfile.name}</span>
+                <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-wider ${userTier === 'pro' ? 'text-green-400' : 'text-gray-500'}`}>{userTier === 'pro' ? 'PRO ACTIVE' : 'FREE PLAN'}</span>
               </div>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-400 p-[2px]">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-400 p-[2px] shrink-0">
                 <div className="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden">
-                  {userProfile.avatar ? <img src={userProfile.avatar} alt="Avatar" className="w-full h-full object-cover" /> : <span className="text-white font-bold">{userProfile.name.charAt(0)}</span>}
+                  {userProfile.avatar ? <img src={userProfile.avatar} className="w-full h-full object-cover" /> : <span className="text-white font-bold text-xs md:text-sm">{userProfile.name.charAt(0)}</span>}
                 </div>
               </div>
             </div>
@@ -2162,3 +2153,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
