@@ -161,7 +161,7 @@ const OwnerCRM = ({ selectedProjectId, savedPages, setSelectedProjectId }) => {
             onChange={(e) => setSelectedProjectId(e.target.value)}
             className="w-full sm:w-auto bg-black border border-white/20 rounded-lg px-3 py-2 text-white outline-none cursor-pointer focus:border-cyan-500 text-xs sm:text-sm"
           >
-            {savedPages.map(p => <option key={p.id} value={p.id}>{p.setup?.name || 'Untitled Project'}</option>)}
+            {savedPages.map(p => <option key={p.id} value={p.id}>{p?.setup?.name || p?.page_data?.setup?.name || 'Untitled Project'}</option>)}
           </select>
         </div>
       </div>
@@ -363,6 +363,7 @@ export default function Dashboard() {
       .replace(/(^-|-$)+/g, '');
 
     try {
+      // Make sure your App.jsx router actually has a Route for "/3DUNIVERSE/:username" !
       const publicUrl = `${window.location.origin}/3DUNIVERSE/${cleanUrlSlug}`;
 
       let sanitizedData;
@@ -374,23 +375,25 @@ export default function Dashboard() {
         return;
       }
 
+      // 🚀 FIXED: Removed the forced 'id' and added the 'onConflict' rule
       const { error } = await supabase
         .from('landing_pages')
         .upsert({
-          id: currentUser.id,
           user_id: currentUser.id,
-          site_name: cleanUrlSlug,
+          site_name: cleanUrlSlug, // We use this to check for duplicates
           page_data: sanitizedData,
-          public_url: publicUrl
-        });
+          // If you get an error here, make sure you actually added a 'public_url' column to your Supabase table!
+        }, { onConflict: 'site_name' });
 
       if (error) throw error;
 
       setPageData(prev => ({ ...prev, status: 'Published', publish: { ...prev.publish, publicUrl } }));
 
       setSavedPages(prev => {
-        const existingIdx = prev.findIndex(p => p.id === pageData.id);
-        const updatedPage = { ...pageData, status: 'Published', publish: { ...pageData.publish, publicUrl } };
+        // Safe check using cleanUrlSlug since 'id' might not be perfectly synced in local state yet
+        const existingIdx = prev.findIndex(p => p.site_name === cleanUrlSlug);
+        const updatedPage = { ...pageData, site_name: cleanUrlSlug, status: 'Published', publish: { ...pageData?.publish, publicUrl } };
+
         if (existingIdx >= 0) {
           const updated = [...prev];
           updated[existingIdx] = updatedPage;
@@ -448,28 +451,31 @@ export default function Dashboard() {
     setActiveEditorStep('setup');
   };
   const handleDeleteProject = async (projectId) => {
-    // 1. DEFENSIVE CHECK: Stop if no ID is found
-    if (!projectId) {
-      console.error("Delete cancelled: Project ID is missing.");
-      alert("Error: Cannot delete project because the ID is missing.");
-      return;
-    }
-
-    if (!window.confirm("Are you sure? This will permanently delete your project.")) return;
+    if (!window.confirm('Are you sure you want to delete this project? This cannot be undone.')) return;
 
     try {
-      const response = await fetch(`/api/user/project/${projectId}`, {
-        method: 'DELETE',
-      });
+      // 🚀 SUPABASE DELETE COMMAND
+      const { error } = await supabase
+        .from('landing_pages')
+        .delete()
+        .eq('id', projectId); // Or .eq('site_name', projectId) depending on what your currentId is!
 
-      if (response.ok) {
-        setSavedPages(prevPages => prevPages.filter(page => page._id !== projectId));
-        alert("Project deleted successfully.");
-      } else {
-        alert("Failed to delete project.");
+      if (error) throw error;
+
+      // Remove it from the screen immediately
+      setSavedPages(prev => prev.filter(p => p.id !== projectId && p._id !== projectId));
+
+      // If we were editing this project, clear the editor
+      if (pageData.id === projectId || pageData._id === projectId) {
+        setPageData({
+          setup: {}, brand: {}, hero: {}, blocks: [], theme: {}, contact: {}, publish: {}
+        });
       }
-    } catch (error) {
-      console.error("Error deleting project:", error);
+
+      alert('Project deleted successfully.');
+    } catch (err) {
+      console.error("Error deleting project:", err);
+      alert('Failed to delete project: ' + err.message);
     }
   };
 
@@ -615,8 +621,7 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
               <label className="text-xs sm:text-sm font-bold text-gray-400">Select Project:</label>
               <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className="w-full sm:w-auto bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white outline-none cursor-pointer text-sm">
-                {savedPages.map(p => <option key={p.id} value={p.id}>{p.setup?.name || 'Untitled'}</option>)}
-              </select>
+                {savedPages.map(p => <option key={p.id} value={p.id}>{p?.setup?.name || p?.page_data?.setup?.name || 'Untitled Project'}</option>)}              </select>
             </div>
           </div>
         </div>
@@ -712,8 +717,9 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="p-5">
-                <h3 className="text-lg font-bold text-white mb-1">{page.setup.name || 'Untitled Project'}</h3>
-                {/* Displaying currentId safely */}
+                <h3 className="text-lg font-bold text-white mb-1">
+                  {page?.setup?.name || page?.page_data?.setup?.name || 'Untitled Project'}
+                </h3>                {/* Displaying currentId safely */}
                 <p className="text-xs text-gray-400 mb-4 font-mono">{currentId}</p>
 
                 <div className="flex justify-between items-center text-sm text-gray-300 mb-5 bg-black/30 p-3 rounded-xl border border-white/5">
@@ -763,7 +769,7 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
               <label className="text-xs sm:text-sm font-bold text-gray-400">Context:</label>
               <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className="w-full sm:w-auto bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white outline-none cursor-pointer text-sm">
-                {savedPages.map(p => <option key={p.id} value={p.id}>{p.setup.name || 'Untitled'}</option>)}
+                {savedPages.map(p => <option key={p.id} value={p.id}>{p?.setup?.name || p?.page_data?.setup?.name || 'Untitled Project'}</option>)}
               </select>
             </div>
             <button className="w-full sm:w-auto px-4 md:px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
@@ -1039,7 +1045,8 @@ export default function Dashboard() {
   );
 
   const renderStep3Hero = () => (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 h-full">
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
+      {/* Stacks vertically on phones, side-by-side on laptops */}
       <div className="space-y-6 overflow-y-auto custom-scrollbar pr-2 pb-10">
         <div>
           <h3 className="text-2xl font-bold text-white mb-2">Hero & Navigation</h3>
@@ -1129,7 +1136,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 
   const renderStep4Blocks = () => (
