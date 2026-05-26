@@ -22,12 +22,13 @@ export default function ClientLogin() {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: window.location.origin + `/customer-dashboard/${username}`
+                    // 🚀 FIX: This forces Google to send them back to the dashboard instead of the homepage!
+                    redirectTo: `${window.location.origin}/client-portal/${username}`
                 }
             });
             if (error) throw error;
         } catch (err) {
-            alert('Google Login failed: ' + err.message);
+            alert('Sign-in failed.');
         }
     };
 

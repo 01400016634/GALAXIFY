@@ -1186,7 +1186,12 @@ export default function Dashboard() {
             </div>
 
             {/* Renders our new separate file! */}
-            <PersonalBrandBuilder pageData={pageData} setPageData={setPageData} />
+            {/* Renders our new separate file! */}
+            <PersonalBrandBuilder
+              pageData={pageData}
+              setPageData={setPageData}
+              uploadFileToStorage={uploadFileToStorage}
+            />
           </div>
 
           {/* Right Side: Preview Box */}

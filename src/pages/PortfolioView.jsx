@@ -146,8 +146,8 @@ const PersonalBrandRenderer = ({ pb, primaryColor }) => {
           {pb.intro?.headline}
         </p>
         <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-8">
-          {pb.intro?.contactBtn && <a href="#contact" className="px-8 py-4 rounded-xl text-black font-black uppercase tracking-widest shadow-[0_0_30px_rgba(6,182,212,0.4)] hover:scale-105 transition-all" style={{ backgroundColor: primaryColor }}>{pb.intro.contactBtn}</a>}
-          {pb.intro?.workBtn && <a href="#experience" className="px-8 py-4 rounded-xl bg-white/10 text-white font-bold uppercase tracking-widest border border-white/20 hover:bg-white/20 hover:scale-105 transition-all">{pb.intro.workBtn}</a>}
+          {pb.intro?.contactBtn && <a href={pb.intro.contactBtnUrl || "#contact"} className="px-8 py-4 rounded-xl text-black font-black uppercase tracking-widest shadow-[0_0_30px_rgba(6,182,212,0.4)] hover:scale-105 transition-all" style={{ backgroundColor: primaryColor }}>{pb.intro.contactBtn}</a>}
+          {pb.intro?.workBtn && <a href={pb.intro.workBtnUrl || "#experience"} className="px-8 py-4 rounded-xl bg-white/10 text-white font-bold uppercase tracking-widest border border-white/20 hover:bg-white/20 hover:scale-105 transition-all">{pb.intro.workBtn}</a>}
         </div>
       </div>
 
@@ -554,6 +554,13 @@ const PortfolioView = () => {
                       <div className={`inline-flex items-center justify-center gap-2 px-6 py-2 rounded-full border border-white/20 bg-white/5 text-white font-mono mb-8 uppercase tracking-widest text-xs shadow-lg ${block.style?.alignment === 'left' ? 'mr-auto' : block.style?.alignment === 'right' ? 'ml-auto' : 'mx-auto'}`}>{block.title}</div>
                       <h2 className="text-4xl sm:text-5xl md:text-[4.5rem] font-black text-white mb-4 drop-shadow-[0_5px_20px_rgba(0,0,0,0.8)] leading-tight break-words">{block.content.headline}</h2>
                       <p className="text-gray-300 text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">{block.content.description}</p>
+                      {/* 🚀 NEW: THIS ACTUALLY DISPLAYS THE UPLOADED IMAGES FOR STANDARD BLOCKS! */}
+                      {block.media?.heroImage && (
+                        <div className="mt-12 w-full max-w-4xl mx-auto rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 relative group">
+                          <div className="absolute inset-0 bg-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                          <img src={block.media.heroImage} className="w-full max-h-[600px] object-cover hover:scale-105 transition-transform duration-700" alt="Section Media" />
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -564,7 +571,10 @@ const PortfolioView = () => {
       )}
 
       {/* Review Section */}
-      <ReviewSection siteName={username} />
+      {/* 🚀 CONDITIONAL REVIEWS: Hidden for Personal Brands */}
+      {data.setup?.category !== 'personal-brand' && (
+        <ReviewSection siteName={username} />
+      )}
 
       {/* FLOATING DOCKS */}
       <div className="fixed bottom-8 right-8 z-[999] flex flex-col gap-3 pointer-events-auto">
