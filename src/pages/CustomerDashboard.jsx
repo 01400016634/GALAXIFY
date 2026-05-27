@@ -20,7 +20,7 @@ export default function CustomerDashboard() {
 
             // If they aren't logged in, kick them back to the login page immediately!
             if (error || !user) {
-                navigate(`/${username}/customer-login`);
+                navigate(`/client-portal/${username}`);
                 return;
             }
 
@@ -71,7 +71,7 @@ export default function CustomerDashboard() {
 
     const handleSignOut = async () => {
         await supabase.auth.signOut();
-        navigate(`/${username}`); // 🚀 Sends them smoothly back to your store
+        navigate(`/client-portal/${username}`); // 🚀 Sends them smoothly back to your store
     };
 
     if (loading) return (
