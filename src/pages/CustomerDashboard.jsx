@@ -120,10 +120,14 @@ const EcommerceView = ({ requests }) => (
                 {requests.length > 0 ? requests.map(req => (
                     <div key={req.id} className="p-5 bg-black/40 rounded-xl border border-white/5 flex flex-wrap justify-between items-center gap-4 hover:border-cyan-500/30 transition-colors">
                         <div>
-                            <p className="font-black text-lg">Order #{req.id.slice(0, 6).toUpperCase()}</p>
+                            {/* 🚀 THE FIX: We added the Item Name here! */}
+                            <p className="font-black text-lg text-cyan-400">{req.payload?.item || 'Premium Item'}</p>
+                            <p className="text-sm font-bold mt-1">Order #{req.id.slice(0, 6).toUpperCase()}</p>
                             <p className="text-xs text-gray-400 mt-1">Placed on: {new Date(req.created_at).toLocaleDateString()}</p>
                         </div>
-                        <div className="flex items-center gap-6">
+                        <div className="flex flex-col items-end gap-2">
+                            {/* 🚀 THE FIX: We added the Price here! */}
+                            <p className="text-xl font-black text-white">${req.payload?.price || '0.00'}</p>
                             <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${req.status === 'Completed' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'}`}>
                                 {req.status}
                             </span>
@@ -142,12 +146,17 @@ const RealEstateView = ({ requests }) => (
         <h3 className="font-bold flex items-center gap-2 text-lg mb-6"><Calendar className="text-cyan-400" /> My Bookings</h3>
         <div className="space-y-4">
             {requests.length > 0 ? requests.map(req => (
-                <div key={req.id} className="bg-black/40 p-6 rounded-2xl border border-white/5 flex justify-between gap-6">
+                <div key={req.id} className="bg-black/40 p-6 rounded-2xl border border-white/5 flex flex-wrap justify-between items-center gap-4 hover:border-cyan-500/30 transition-colors">
                     <div>
-                        <span className="px-3 py-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-full text-[10px] font-bold uppercase tracking-wider mb-3 inline-block">
+                        <p className="font-black text-lg text-cyan-400">{req.payload?.item || 'Property Viewing'}</p>
+                        <p className="text-sm font-bold mt-1">Booking #{req.id.slice(0, 6).toUpperCase()}</p>
+                        <p className="text-xs text-gray-400 mt-1">Requested on: {new Date(req.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                        <p className="text-xl font-black text-white">${req.payload?.price || '0.00'}</p>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${req.status === 'Completed' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'}`}>
                             {req.status}
                         </span>
-                        <h4 className="font-black text-lg">Property Viewing</h4>
                     </div>
                 </div>
             )) : <p className="text-gray-500 italic text-center">No upcoming viewings.</p>}
@@ -160,14 +169,18 @@ const AgencyView = ({ requests }) => (
         <h3 className="font-bold flex items-center gap-2 text-lg mb-6"><Briefcase className="text-cyan-400" /> Service Requests</h3>
         <div className="space-y-4">
             {requests.length > 0 ? requests.map(req => (
-                <div key={req.id} className="bg-black/40 p-6 rounded-2xl border border-white/5 flex justify-between items-start">
+                <div key={req.id} className="bg-black/40 p-6 rounded-2xl border border-white/5 flex flex-wrap justify-between items-center gap-4 hover:border-cyan-500/30 transition-colors">
                     <div>
-                        <h4 className="font-black text-lg">Project Request</h4>
-                        <p className="text-xs text-gray-400 mt-1">ID: #{req.id.slice(0, 8)}</p>
+                        <p className="font-black text-lg text-cyan-400">{req.payload?.item || 'Project Request'}</p>
+                        <p className="text-sm font-bold mt-1">Request #{req.id.slice(0, 6).toUpperCase()}</p>
+                        <p className="text-xs text-gray-400 mt-1">Date: {new Date(req.created_at).toLocaleDateString()}</p>
                     </div>
-                    <span className="px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                        {req.status}
-                    </span>
+                    <div className="flex flex-col items-end gap-2">
+                        <p className="text-xl font-black text-white">${req.payload?.price || '0.00'}</p>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${req.status === 'Completed' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
+                            {req.status}
+                        </span>
+                    </div>
                 </div>
             )) : <p className="text-gray-500 italic text-center">No active projects.</p>}
         </div>
@@ -177,7 +190,23 @@ const AgencyView = ({ requests }) => (
 const LearningView = ({ requests }) => (
     <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
         <h3 className="font-bold flex items-center gap-2 text-lg mb-6"><BookOpen className="text-cyan-400" /> Course Enrollments</h3>
-        <p className="text-gray-500 italic text-center">Courses will appear here once enrolled.</p>
+        <div className="space-y-4">
+            {requests.length > 0 ? requests.map(req => (
+                <div key={req.id} className="bg-black/40 p-6 rounded-2xl border border-white/5 flex flex-wrap justify-between items-center gap-4 hover:border-cyan-500/30 transition-colors">
+                    <div>
+                        <p className="font-black text-lg text-cyan-400">{req.payload?.item || 'Course Enrollment'}</p>
+                        <p className="text-sm font-bold mt-1">Enrollment #{req.id.slice(0, 6).toUpperCase()}</p>
+                        <p className="text-xs text-gray-400 mt-1">Enrolled on: {new Date(req.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                        <p className="text-xl font-black text-white">${req.payload?.price || '0.00'}</p>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${req.status === 'Completed' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'}`}>
+                            {req.status}
+                        </span>
+                    </div>
+                </div>
+            )) : <p className="text-gray-500 italic text-center">Courses will appear here once enrolled.</p>}
+        </div>
     </div>
 );
 

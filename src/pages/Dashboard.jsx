@@ -137,22 +137,31 @@ const MENU_ITEMS = [
   { id: 'settings', label: 'Account Settings', icon: Settings }
 ];
 
-// 🚀 1. THE ADVANCED CRM COMPONENT
+//  1. THE ADVANCED CRM COMPONENT
 const OwnerCRM = ({ selectedProjectId, savedPages, setSelectedProjectId }) => {
   const [requests, setRequests] = useState([]);
 
   useEffect(() => {
     const fetchRequests = async () => {
       if (!selectedProjectId) return;
+
+      // 🚀 THE FIX: This finds the actual URL name (like 'suktara') to search the database!
+      const activeProject = savedPages.find(p => p.id === selectedProjectId);
+      const siteSlug = activeProject?.site_name || activeProject?.setup?.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+      if (!siteSlug) return;
+
       const { data } = await supabase
         .from('client_requests')
         .select('*')
-        .eq('site_name', selectedProjectId)
+        .eq('site_name', siteSlug)
         .order('created_at', { ascending: false });
+
       if (data) setRequests(data);
     };
+
     fetchRequests();
-  }, [selectedProjectId]);
+  }, [selectedProjectId, savedPages]);
 
   const updateStatus = async (id, newStatus) => {
     await supabase.from('client_requests').update({ status: newStatus }).eq('id', id);
@@ -161,14 +170,13 @@ const OwnerCRM = ({ selectedProjectId, savedPages, setSelectedProjectId }) => {
 
   return (
     <div className="p-4 md:p-8 h-full overflow-y-auto custom-scrollbar space-y-6 md:space-y-8 pb-24">
-      {/* 🚀 RESPONSIVE CRM HEADER */}
+      {/* RESPONSIVE CRM HEADER */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white/5 p-4 md:p-6 rounded-2xl border border-white/10 gap-4 md:gap-5 shadow-lg">
         <div>
           <h2 className="text-lg md:text-2xl font-black text-white">Customer Orders & Bookings</h2>
           <p className="text-xs md:text-sm text-gray-400 mt-1">Manage incoming orders for your published landing pages.</p>
         </div>
 
-        {/* Changed from items-center to flex-col on mobile */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full lg:w-auto bg-black/50 p-3 rounded-xl border border-white/10">
           <label className="text-xs sm:text-sm font-bold text-gray-400 whitespace-nowrap px-1">Filter by Page:</label>
           <select
@@ -190,9 +198,9 @@ const OwnerCRM = ({ selectedProjectId, savedPages, setSelectedProjectId }) => {
                 {req.request_type} • {req.payload?.item || 'Item'}
               </p>
               <h4 className="text-white font-bold text-lg">{req.payload?.customer_name || 'Customer'}</h4>
-              <p className="text-gray-400 text-sm mt-1">📧 {req.customer_email}</p>
-              <p className="text-gray-400 text-sm">📞 {req.phone_number}</p>
-              <p className="text-gray-500 text-xs mt-2 bg-black/50 p-2 rounded border border-white/5">📍 {req.delivery_address}</p>
+              <p className="text-gray-400 text-sm mt-1">{req.customer_email}</p>
+              <p className="text-gray-400 text-sm">{req.phone_number}</p>
+              <p className="text-gray-500 text-xs mt-2 bg-black/50 p-2 rounded border border-white/5">{req.delivery_address}</p>
             </div>
 
             <div className="w-full md:w-auto flex flex-col items-end gap-2">
