@@ -11,7 +11,7 @@ import {
   CheckCircle2, ChevronDown, Target, Layers, Zap, LayoutTemplate, ArrowRight,
   Database, ShieldCheck, ShoppingBag, Cpu, Home as HomeIcon, BookOpen, Briefcase,
   Wand2, Fingerprint, ImageIcon, Video, Box, Star, Send, Sliders, MessageSquare,
-  User, Palette, Activity, Eye, Menu, Crown,ShieldAlert
+  User, Palette, Activity, Eye, Menu, Crown, ShieldAlert
 } from 'lucide-react';
 
 // 🚀 GLOBAL CONFIGURATION CONSTANTS
@@ -73,7 +73,7 @@ const Home = () => {
 
   // 🚀 FETCH SETTINGS ON LOAD
   useEffect(() => {
-    fetch('http://localhost:5001/api/public/home')
+    fetch('/api/public/home')
       .then(res => res.json())
       .then(data => {
         if (data.settings) {
@@ -180,7 +180,8 @@ const Home = () => {
       {/* BACKGROUND: 3D Solar System Canvas */}
       <div className="absolute inset-0 z-0">
         <ErrorBoundary>
-          <Canvas camera={{ position: [0, 20, 35], fov: 45 }}>
+          {/* 🚀 ADDED dpr={[1, 1.5]} to stop mobile lag and overheating! */}
+          <Canvas camera={{ position: [0, 20, 35], fov: 45 }} dpr={[1, 1.5]}>
             <Suspense fallback={<CanvasLoader />}>
               <SolarSystem />
             </Suspense>

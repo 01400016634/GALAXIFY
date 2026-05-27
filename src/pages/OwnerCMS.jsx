@@ -132,7 +132,7 @@ const OwnerCMS = () => {
   const fetchDashboard = async () => {
     try {
       const timestamp = new Date().getTime();
-      const response = await fetch(`http://localhost:5001/api/owner/dashboard?t=${timestamp}`, {
+      const response = await fetch(`/api/owner/dashboard?t=${timestamp}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
@@ -174,7 +174,7 @@ const OwnerCMS = () => {
   const handleUpdatePlan = async (id, currentPlan) => {
     const newPlan = currentPlan === 'free' ? 'pro' : 'free';
     if (!window.confirm(`Upgrade user to ${newPlan.toUpperCase()}?`)) return;
-    await fetch(`http://localhost:5001/api/owner/users/${id}/plan`, {
+    await fetch(`/api/owner/users/${id}/plan`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` },
       body: JSON.stringify({ plan: newPlan })
@@ -184,7 +184,7 @@ const OwnerCMS = () => {
 
   const handleDeleteUser = async (id) => {
     if (!window.confirm("Permanently delete this user?")) return;
-    await fetch(`http://localhost:5001/api/owner/users/${id}`, {
+    await fetch(`/api/owner/users/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
     });
@@ -196,7 +196,7 @@ const OwnerCMS = () => {
     if (newDomain === null) return;
 
     try {
-      await fetch(`http://localhost:5001/api/owner/projects/${projectId}/domain`, {
+      await fetch(`/api/owner/projects/${projectId}/domain`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` },
         body: JSON.stringify({ customDomain: newDomain })
@@ -210,7 +210,7 @@ const OwnerCMS = () => {
   const handleDeleteProject = async (projectId) => {
     if (!window.confirm("🚨 Delete this project permanently? This cannot be undone.")) return;
     try {
-      await fetch(`http://localhost:5001/api/owner/projects/${projectId}`, {
+      await fetch(`/api/owner/projects/${projectId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
       });
@@ -236,7 +236,7 @@ const OwnerCMS = () => {
     formData.append('supportsVideoBg', e.target.supportsVideoBg.checked);
 
     try {
-      const response = await fetch('http://localhost:5001/api/owner/upload-theme', {
+      const response = await fetch('/api/owner/upload-theme', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` },
         body: formData
@@ -307,7 +307,7 @@ const OwnerCMS = () => {
   };
   const handleSaveWorkflowToDB = async () => {
     try {
-      await fetch('http://localhost:5001/api/owner/workflow', {
+      await fetch('/api/owner/workflow', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` },
         body: JSON.stringify({ workflowConfig: data.workflowConfig })
@@ -353,7 +353,7 @@ const OwnerCMS = () => {
   // 🚀 SAVE SETTINGS TO BACKEND
   const handleSaveSettings = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/owner/settings', {
+      const response = await fetch('/api/owner/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

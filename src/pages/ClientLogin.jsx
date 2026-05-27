@@ -17,13 +17,14 @@ export default function ClientLogin() {
         password: '',
         fullName: ''
     });
+
     const handleGoogleLogin = async () => {
         try {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    // 🚀 FIX: This forces Google to send them back to the dashboard instead of the homepage!
-                    redirectTo: `${window.location.origin}/client-portal/${username}`
+                    // 🚀 FIXED: Now sends them to the Customer Dashboard instead of back to the login page!
+                    redirectTo: `${window.location.origin}/customer-dashboard/${username}`
                 }
             });
             if (error) throw error;
@@ -64,7 +65,7 @@ export default function ClientLogin() {
 
                 if (error) throw error;
 
-                // Redirect to a customer dashboard after login (you can build this later)
+                // Redirect to a customer dashboard after login
                 navigate(`/customer-dashboard/${username}`);
             }
         } catch (err) {
