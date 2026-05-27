@@ -501,7 +501,10 @@ const PortfolioView = () => {
 
           {/* 🚀 CONDITIONAL SIGN IN: Hidden for Personal Brands */}
           {data.setup?.category !== 'personal-brand' && (
-            <button onClick={() => window.location.href = `/client-portal/${username}?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`} className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-sm font-bold flex items-center gap-2 backdrop-blur-md transition-all">
+            <button
+              onClick={() => window.location.href = `/client-portal/${username}`}
+              className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-sm font-bold flex items-center gap-2 backdrop-blur-md transition-all"
+            >
               <User size={16} /> Sign In
             </button>
           )}

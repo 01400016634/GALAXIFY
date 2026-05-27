@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  publicDir: 'galaxify-ai/public',
+  publicDir: '3d-universe/public',
   optimizeDeps: {
     include: ['pdfjs-dist'],
     esbuildOptions: {
@@ -13,5 +13,6 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
+    chunkSizeWarningLimit: 2000, // 🚀 This silences the 500kb warning!
   },
 })
