@@ -145,13 +145,21 @@ const OwnerCRM = ({ selectedProjectId, savedPages, setSelectedProjectId }) => {
     const fetchRequests = async () => {
       if (!selectedProjectId) return;
 
-      // 🚀 THE FIX: This finds the actual URL name (like 'suktara') to search the database!
       const activeProject = savedPages.find(p => p.id === selectedProjectId);
-      const siteSlug = activeProject?.site_name || activeProject?.setup?.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      if (!activeProject) return;
 
-      if (!siteSlug) return;
+      // 🚀 BULLETPROOF SLUG FINDER: Safely extracts the exact URL name (e.g., 'asdfg')
+      let siteSlug = activeProject.site_name;
+      if (!siteSlug && activeProject.publish?.publicUrl) {
+        siteSlug = activeProject.publish.publicUrl.split('/').pop().split('?')[0];
+      }
+      if (!siteSlug) {
+        siteSlug = activeProject.setup?.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      }
 
-      const { data } = await supabase
+      console.log("Fetching orders for site:", siteSlug);
+
+      const { data, error } = await supabase
         .from('client_requests')
         .select('*')
         .eq('site_name', siteSlug)
