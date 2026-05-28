@@ -3,16 +3,31 @@ import { Stars, OrbitControls, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import Planet from './Planet';
 
+// 🚀 1. THE BUNDLER FIX: Import all textures directly!
+// (If your SolarSystem is in src/components/hero, this ../../ path is perfect)
+import sunImg from '../../assets/textures/sun.webp';
+import bgImg from '../../assets/textures/stars_milky_way.webp';
+import mercuryImg from '../../assets/textures/mercury.webp';
+import venusImg from '../../assets/textures/venus.webp';
+import earthImg from '../../assets/textures/earth.webp';
+import moonImg from '../../assets/textures/moon.webp';
+import marsImg from '../../assets/textures/mars.webp';
+import jupiterImg from '../../assets/textures/jupiter.webp';
+import saturnImg from '../../assets/textures/saturn.webp';
+import saturnRingImg from '../../assets/textures/saturn_ring_alpha.webp';
+import uranusImg from '../../assets/textures/uranus.webp';
+import neptuneImg from '../../assets/textures/neptune.webp';
+
 const SolarSystem = () => {
-  // 🚀 FIXED: Swapped all textures to the new, blazing-fast .webp format!
+  // 🚀 2. Feed the imported variables into useTexture (NO quote marks around them!)
   const [
     sunMap, backgroundMap,
     mercuryMap, venusMap, earthMap, moonMap, marsMap, jupiterMap, saturnMap, saturnRingMap, uranusMap, neptuneMap
   ] = useTexture([
-    '/textures/sun.webp', '/textures/stars_milky_way.webp',
-    '/textures/mercury.webp', '/textures/venus.webp', '/textures/earth.webp', '/textures/moon.webp',
-    '/textures/mars.webp', '/textures/jupiter.webp', '/textures/saturn.webp', '/textures/saturn_ring_alpha.webp',
-    '/textures/uranus.webp', '/textures/neptune.webp'
+    sunImg, bgImg,
+    mercuryImg, venusImg, earthImg, moonImg,
+    marsImg, jupiterImg, saturnImg, saturnRingImg,
+    uranusImg, neptuneImg
   ]);
 
   const planetsData = useMemo(() => [
@@ -56,19 +71,18 @@ const SolarSystem = () => {
   );
 };
 
-// 🚀 THE ULTIMATE SPEED HACK: Preload textures outside the component!
-// This tells the browser to fetch the images immediately in the background.
-useTexture.preload('/textures/sun.webp');
-useTexture.preload('/textures/stars_milky_way.webp');
-useTexture.preload('/textures/mercury.webp');
-useTexture.preload('/textures/venus.webp');
-useTexture.preload('/textures/earth.webp');
-useTexture.preload('/textures/moon.webp');
-useTexture.preload('/textures/mars.webp');
-useTexture.preload('/textures/jupiter.webp');
-useTexture.preload('/textures/saturn.webp');
-useTexture.preload('/textures/saturn_ring_alpha.webp');
-useTexture.preload('/textures/uranus.webp');
-useTexture.preload('/textures/neptune.webp');
+// 🚀 3. Preload the imported variables so it stays blazing fast!
+useTexture.preload(sunImg);
+useTexture.preload(bgImg);
+useTexture.preload(mercuryImg);
+useTexture.preload(venusImg);
+useTexture.preload(earthImg);
+useTexture.preload(moonImg);
+useTexture.preload(marsImg);
+useTexture.preload(jupiterImg);
+useTexture.preload(saturnImg);
+useTexture.preload(saturnRingImg);
+useTexture.preload(uranusImg);
+useTexture.preload(neptuneImg);
 
 export default SolarSystem;
