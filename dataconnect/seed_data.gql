@@ -1,0 +1,66 @@
+mutation CreateDemoData @transaction @auth(level: USER, insecureReason: "This is a seed data mutation, intended for internal use to populate the database with initial data. It is not exposed to end-users.") {
+  user1: user_insert(data: {
+    id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+    displayName: "Alice Smith",
+    email: "alice.smith@example.com",
+    createdAt: "2023-01-01T10:00:00Z"
+  })
+  user2: user_insert(data: {
+    id: "b1f0e1d2-0f1c-4e3b-9a2d-1a2b3c4d5e6f",
+    displayName: "Bob Johnson",
+    email: "bob.johnson@example.com",
+    createdAt: "2023-01-02T11:00:00Z"
+  })
+  subscriptionType1: subscriptionType_insert(data: {
+    id: "c2d3e4f5-1g2h-3i4j-5k6l-7m8n9o0p1q2r",
+    name: "Basic Plan",
+    price: 9.99,
+    features: ["Feature A", "Feature B"]
+  })
+  subscriptionType2: subscriptionType_insert(data: {
+    id: "d3e4f5g6-2h3i-4j5k-6l7m-8n9o0p1q2r3s",
+    name: "Premium Plan",
+    price: 19.99,
+    features: ["Feature A", "Feature B", "Feature C", "Feature D"]
+  })
+  portfolio1: portfolio_insert(data: {
+    id: "e4f5g6h7-3i4j-5k6l-7m8n-9o0p1q2r3s4t",
+    userId: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+    name: "Alice's Creative Portfolio",
+    designation: "UX Designer",
+    publicUrl: "https://alice.portfolio.com",
+    createdAt: "2023-01-05T12:00:00Z",
+    updatedAt: "2023-01-05T12:00:00Z",
+    theme: "Modern Light",
+    aboutMe: "Passionate about user-centered design.",
+    isPublished: true
+  })
+  portfolioSection1: portfolioSection_insert(data: {
+    id: "f5g6h7i8-4j5k-6l7m-8n9o-0p1q2r3s4t5u",
+    portfolioId: "e4f5g6h7-3i4j-5k6l-7m8n-9o0p1q2r3s4t",
+    sectionType: "About",
+    order: 1,
+    title: "Introduction",
+    description: "This is the about me section."
+  })
+  project1: project_insert(data: {
+    id: "g6h7i8j9-5k6l-7m8n-9o0p-1q2r3s4t5u6v",
+    portfolioId: "e4f5g6h7-3i4j-5k6l-7m8n-9o0p1q2r3s4t",
+    title: "E-commerce Redesign",
+    description: "A complete overhaul of an online store's user experience.",
+    link: "https://example.com/ecommerce-project",
+    imageUrl: "https://example.com/ecommerce-image.jpg"
+  })
+  skill1: skill_insert(data: {
+    id: "h7i8j9k0-6l7m-8n9o-0p1q-2r3s4t5u6v7w",
+    portfolioId: "e4f5g6h7-3i4j-5k6l-7m8n-9o0p1q2r3s4t",
+    name: "Figma",
+    level: "Expert"
+  })
+  achievement1: achievement_insert(data: {
+    id: "i8j9k0l1-7m8n-9o0p-1q2r-3s4t5u6v7w8x",
+    portfolioId: "e4f5g6h7-3i4j-5k6l-7m8n-9o0p1q2r3s4t",
+    description: "Awarded 'Best UX Project of the Year'",
+    date: "2023-11-15"
+  })
+}

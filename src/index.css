@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .glass-morphism {
+    @apply bg-white/10 backdrop-blur-[10px] border border-white/10;
+  }
+}
+
+@layer base {
+  body {
+    /* Uses a crosshair cursor globally for a more interactive 3D feel */
+    cursor: crosshair;
+  }
+  
+  /* Make sure links still get the pointer hand cursor */
+  a, button, [role="button"] {
+    cursor: pointer;
+  }
+}
