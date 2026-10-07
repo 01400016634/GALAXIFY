@@ -199,21 +199,22 @@ const OwnerCMS = () => {
   const handleUpdatePlan = async (id, currentPlan) => {
     const newPlan = currentPlan === 'free' ? 'pro' : 'free';
     if (!window.confirm(`Upgrade user to ${newPlan.toUpperCase()}?`)) return;
-    await fetch(`/api/owner/users/${id}/plan`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` },
-      body: JSON.stringify({ plan: newPlan })
-    });
-    fetchDashboard();
+    try {
+      await supabase.from('profiles').update({ plan: newPlan }).eq('id', id);
+      fetchDashboard();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleDeleteUser = async (id) => {
     if (!window.confirm("Permanently delete this user?")) return;
-    await fetch(`/api/owner/users/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
-    });
-    fetchDashboard();
+    try {
+      await supabase.from('profiles').delete().eq('id', id);
+      fetchDashboard();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleSetDomain = async (projectId, currentDomain) => {
@@ -221,11 +222,7 @@ const OwnerCMS = () => {
     if (newDomain === null) return;
 
     try {
-      await fetch(`/api/owner/projects/${projectId}/domain`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` },
-        body: JSON.stringify({ customDomain: newDomain })
-      });
+      await supabase.from('landing_pages').update({ customDomain: newDomain }).eq('id', projectId);
       fetchDashboard();
     } catch (err) {
       alert("Failed to update domain");
@@ -235,10 +232,7 @@ const OwnerCMS = () => {
   const handleDeleteProject = async (projectId) => {
     if (!window.confirm("🚨 Delete this project permanently? This cannot be undone.")) return;
     try {
-      await fetch(`/api/owner/projects/${projectId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
-      });
+      await supabase.from('landing_pages').delete().eq('id', projectId);
       fetchDashboard();
     } catch (err) {
       alert("Failed to delete project");
@@ -661,7 +655,7 @@ const OwnerCMS = () => {
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {data.users?.length > 0 ? data.users.map((user) => (
-                        <tr key={user._id} className="hover:bg-white/5 transition-colors group">
+                        <tr key={user.id} className="hover:bg-white/5 transition-colors group">
                           <td className="px-8 py-5">
                             <div className="flex items-center gap-4">
                               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-800 to-[#ff003c]/20 border border-white/10 flex items-center justify-center font-bold text-white shadow-inner">
@@ -679,8 +673,8 @@ const OwnerCMS = () => {
                             </span>
                           </td>
                           <td className="px-8 py-5 text-right flex justify-end gap-2">
-                            <button onClick={() => handleUpdatePlan(user._id, user.plan)} className="text-slate-500 hover:text-green-400 transition-colors p-2 hover:bg-white/10 rounded-lg"><Edit size={16} /></button>
-                            <button onClick={() => handleDeleteUser(user._id)} className="text-slate-500 hover:text-red-500 transition-colors p-2 hover:bg-white/10 rounded-lg"><Trash2 size={16} /></button>
+                            <button onClick={() => handleUpdatePlan(user.id, user.plan)} className="text-slate-500 hover:text-green-400 transition-colors p-2 hover:bg-white/10 rounded-lg"><Edit size={16} /></button>
+                            <button onClick={() => handleDeleteUser(user.id)} className="text-slate-500 hover:text-red-500 transition-colors p-2 hover:bg-white/10 rounded-lg"><Trash2 size={16} /></button>
                           </td>
                         </tr>
                       )) : (
@@ -720,7 +714,7 @@ const OwnerCMS = () => {
                               const previewUrl = project.publicUrl || project.public_url || `/3DUNIVERSE/${project.site_name || project.username}`;
 
                               return (
-                                <tr key={project._id} className="hover:bg-white/5 transition-colors group">
+                                <tr key={project.id} className="hover:bg-white/5 transition-colors group">
                                   <td className="p-4">
                                     <div className="font-bold text-white text-sm">{projectName}</div>
                                   </td>
@@ -732,7 +726,7 @@ const OwnerCMS = () => {
                                       <span className={project.customDomain ? "text-cyan-400 font-mono text-sm" : "text-slate-600 text-sm italic"}>
                                         {project.customDomain || 'Not Configured'}
                                       </span>
-                                      <button onClick={() => handleSetDomain(project._id, project.customDomain)} className="text-slate-500 hover:text-white transition-colors bg-black/50 p-1.5 rounded-md border border-white/10">
+                                      <button onClick={() => handleSetDomain(project.id, project.customDomain)} className="text-slate-500 hover:text-white transition-colors bg-black/50 p-1.5 rounded-md border border-white/10">
                                         <Edit size={12} />
                                       </button>
                                     </div>
@@ -741,7 +735,7 @@ const OwnerCMS = () => {
                                     <button onClick={() => window.open(previewUrl, '_blank')} className="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 text-xs bg-blue-400/10 px-3 py-1.5 rounded-lg border border-blue-400/20" title="Preview Public Link">
                                       <Eye size={14} /> Preview
                                     </button>
-                                    <button onClick={() => handleDeleteProject(project._id)} className="text-red-500 hover:text-red-400 bg-red-500/10 p-1.5 rounded-lg border border-red-500/20 transition-colors" title="Delete Project">
+                                    <button onClick={() => handleDeleteProject(project.id)} className="text-red-500 hover:text-red-400 bg-red-500/10 p-1.5 rounded-lg border border-red-500/20 transition-colors" title="Delete Project">
                                       <Trash2 size={16} />
                                     </button>
                                   </td>
